@@ -3769,15 +3769,26 @@ void Server::handle_client_setattr(MDRequestRef& mdr)
   }
 
   __u32 mask = req->head.args.setattr.mask;
-  __u32 access_mask = MAY_WRITE;
+  __u32 access_mask = 0;
 
   // xlock inode
-  if (mask & (CEPH_SETATTR_MODE|CEPH_SETATTR_UID|CEPH_SETATTR_GID|CEPH_SETATTR_BTIME|CEPH_SETATTR_KILL_SGUID))
+  if (mask & CEPH_SETATTR_MODE) {
     xlocks.insert(&cur->authlock);
-  if (mask & (CEPH_SETATTR_MTIME|CEPH_SETATTR_ATIME|CEPH_SETATTR_SIZE))
+    access_mask |= MAY_CHMOD;
+  }
+  if (mask & (CEPH_SETATTR_UID|CEPH_SETATTR_GID|CEPH_SETATTR_BTIME|
+	      CEPH_SETATTR_KILL_SGUID)) {
+    xlocks.insert(&cur->authlock);
+    access_mask |= MAY_WRITE;
+  }
+  if (mask & (CEPH_SETATTR_MTIME|CEPH_SETATTR_ATIME|CEPH_SETATTR_SIZE)) {
     xlocks.insert(&cur->filelock);
-  if (mask & CEPH_SETATTR_CTIME)
+    access_mask |= MAY_WRITE;
+  }
+  if (mask & CEPH_SETATTR_CTIME) {
     wrlocks.insert(&cur->versionlock);
+    access_mask |= MAY_WRITE;
+  }
 
   if (!mds->locker->acquire_locks(mdr, rdlocks, wrlocks, xlocks))
     return;

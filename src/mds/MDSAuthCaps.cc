@@ -199,7 +199,8 @@ bool MDSAuthCaps::is_capable(const std::string &inode_path,
        ++i) {
 
     if (i->match.match(inode_path, caller_uid, caller_gid, caller_gid_list) &&
-	i->spec.allows(mask & (MAY_READ|MAY_EXECUTE), mask & MAY_WRITE)) {
+	i->spec.allows(mask & (MAY_READ|MAY_EXECUTE),
+		       mask & (MAY_WRITE|MAY_CHOWN|MAY_CHGRP|MAY_CHMOD))) {
       // Spec is non-allowing if caller asked for set pool but spec forbids it
       if (mask & MAY_SET_POOL) {
         if (!i->spec.allows_set_pool()) {
@@ -218,6 +219,11 @@ bool MDSAuthCaps::is_capable(const std::string &inode_path,
 	    inode_uid != caller_uid) { // you can't chown from someone else
 	  continue;
 	}
+      }
+
+      if (mask & MAY_CHMOD && inode_uid != caller_uid) {
+	// you can only chmod files you own, unless you're root (passed above)
+	continue;
       }
 
       // set up list of which gids are allowed here; we need to compare now

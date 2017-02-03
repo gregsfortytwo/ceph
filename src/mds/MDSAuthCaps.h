@@ -23,13 +23,15 @@
 #include "common/debug.h"
 
 // unix-style capabilities
+// These values are ephemeral; DO NOT persist them to disk!
 enum {
-  MAY_READ = 1,
-  MAY_WRITE = 2,
-  MAY_EXECUTE = 4,
-  MAY_CHOWN = 16,
-  MAY_CHGRP = 32,
-  MAY_SET_POOL = 64,
+  MAY_READ = 1,      // may read Inode or file data
+  MAY_WRITE = 2,     // may write Inode or file data
+  MAY_EXECUTE = 4,   // usual *nix "execute" bit
+  MAY_CHOWN = 16,    // may chown the Inode
+  MAY_CHGRP = 32,    // may chgrp the Inode
+  MAY_CHMOD = 64,    // may chmod the Inode
+  MAY_SET_POOL = 128,// may set the pool location of the file data
 };
 
 class CephContext;
