@@ -182,7 +182,8 @@ bool MDSAuthCaps::is_capable(const std::string &inode_path,
 			     uid_t caller_uid, gid_t caller_gid,
 			     const vector<uint64_t> *caller_gid_list,
 			     unsigned mask,
-			     uid_t new_uid, gid_t new_gid) const
+			     uid_t new_uid, gid_t new_gid,
+			     bool no_posix_checks) const
 {
   if (cct)
     ldout(cct, 10) << __func__ << " inode(path /" << inode_path
@@ -209,6 +210,11 @@ bool MDSAuthCaps::is_capable(const std::string &inode_path,
       }
 
       // check unix permissions?
+      if (no_posix_checks) {
+	// they can access this inode; we don't need to check POSIX rules
+	return true;
+      }
+
       if (i->match.uid == MDSCapMatch::MDS_AUTH_UID_ANY) {
         return true;
       }

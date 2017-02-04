@@ -314,8 +314,20 @@ public:
     completed_requests_dirty = false;
   }
 
+  /**
+   * Check if this session is allowed to access a CInode with
+   * mask: the access mask, described in MDSAuthCaps.h
+   * caller_uid: uid of the calling "process"
+   * caller_gid: gid of the calling "process"
+   * gid_list: extra groups of the calling "process"
+   * new_uid: if mask includes CHOWN, the uid being set; else ignored
+   * new_gid: if mask includes CHGRP, the gid being set; else ignored
+   * no_posix_checks: do not check the operation for POSIX rules, only
+   *  for Ceph access. Used for cap flushes.
+   */
   int check_access(CInode *in, unsigned mask, int caller_uid, int caller_gid,
-		   const vector<uint64_t> *gid_list, int new_uid, int new_gid);
+		   const vector<uint64_t> *gid_list, int new_uid, int new_gid,
+		   bool no_posix_checks);
 
 
   Session() : 

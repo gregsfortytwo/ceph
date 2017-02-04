@@ -136,7 +136,8 @@ public:
   bool is_capable(const std::string &inode_path,
 		  uid_t inode_uid, gid_t inode_gid, unsigned inode_mode,
 		  uid_t uid, gid_t gid, const vector<uint64_t> *caller_gid_list,
-		  unsigned mask, uid_t new_uid, gid_t new_gid) const;
+		  unsigned mask, uid_t new_uid, gid_t new_gid,
+		  bool no_posix_checks) const;
   bool path_capable(const std::string &inode_path) const;
 
   friend std::ostream &operator<<(std::ostream &out, const MDSAuthCaps &cap);
