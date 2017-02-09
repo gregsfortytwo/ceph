@@ -83,11 +83,17 @@ public:
  public:
   // cons
   MClientRequest()
-    : Message(CEPH_MSG_CLIENT_REQUEST, HEAD_VERSION, COMPAT_VERSION) {}
+    : Message(CEPH_MSG_CLIENT_REQUEST, HEAD_VERSION, COMPAT_VERSION) {
+    memset(&head, 0, sizeof(head));
+    head.caller_uid = -1;
+    head.caller_gid = -1;
+  }
   MClientRequest(int op)
     : Message(CEPH_MSG_CLIENT_REQUEST, HEAD_VERSION, COMPAT_VERSION) {
     memset(&head, 0, sizeof(head));
     head.op = op;
+    head.caller_uid = -1;
+    head.caller_gid = -1;
   }
 private:
   ~MClientRequest() {}
