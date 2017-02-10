@@ -325,7 +325,7 @@ public:
    * no_posix_checks: do not check the operation for POSIX rules, only
    *  for Ceph access. Used for cap flushes.
    */
-  int check_access(CInode *in, unsigned mask, int caller_uid, int caller_gid,
+  int check_access(const CInode *in, unsigned mask, int caller_uid, int caller_gid,
 		   const vector<uint64_t> *gid_list, int new_uid, int new_gid,
 		   bool no_posix_checks);
 

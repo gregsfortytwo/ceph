@@ -132,7 +132,7 @@ public:
 
   // some helpers
   bool check_fragment_space(MDRequestRef& mdr, CDir *in);
-  bool check_access(MDRequestRef& mdr, CInode *in, unsigned mask);
+  bool check_access(MDRequestRef& mdr, const CInode *in, unsigned mask);
   CDir *validate_dentry_dir(MDRequestRef& mdr, CInode *diri, const string& dname);
   CDir *traverse_to_auth_dir(MDRequestRef& mdr, vector<CDentry*> &trace, filepath refpath);
   CDentry *prepare_null_dentry(MDRequestRef& mdr, CDir *dir, const string& dname, bool okexist=false);

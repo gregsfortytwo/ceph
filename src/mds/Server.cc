@@ -2160,7 +2160,7 @@ void Server::handle_slave_auth_pin_ack(MDRequestRef& mdr, MMDSSlaveRequest *ack)
  * by mask on the given inode, based on the capability in the mdr's
  * session.
  */
-bool Server::check_access(MDRequestRef& mdr, CInode *in, unsigned mask)
+bool Server::check_access(MDRequestRef& mdr, const CInode *in, unsigned mask)
 {
   if (mdr->session) {
     int r = mdr->session->check_access(

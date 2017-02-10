@@ -885,13 +885,13 @@ void Session::decode(bufferlist::iterator &p)
   _update_human_name();
 }
 
-int Session::check_access(CInode *in, unsigned mask,
+int Session::check_access(const CInode *in, unsigned mask,
 			  int caller_uid, int caller_gid,
 			  const vector<uint64_t> *caller_gid_list,
 			  int new_uid, int new_gid, bool no_posix_checks)
 {
   string path;
-  CInode *diri = NULL;
+  const CInode *diri = NULL;
   if (!in->is_base())
     diri = in->get_projected_parent_dn()->get_dir()->get_inode();
   if (diri && diri->is_stray()){
