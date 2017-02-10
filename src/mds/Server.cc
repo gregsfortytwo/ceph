@@ -4969,12 +4969,19 @@ void Server::handle_client_link(MDRequestRef& mdr)
     return;
 
   if ((!mdr->has_more() || mdr->more()->witnessed.empty())) {
-    if (!check_access(mdr, targeti, MAY_WRITE))
+    // basic POSIX rules are stupid:
+    // 1) Can read existing file's directory
+    const CDir *target_dir = targeti->get_projected_parent_dir();
+    assert(target_dir);
+    if (!check_access(mdr, target_dir->get_inode(), MAY_READ))
       return;
 
+    // 2) Can write to new location's directory
     if (!check_access(mdr, dir->get_inode(), MAY_WRITE))
       return;
 
+    // 3) That's it, no worries about the inode/dentry itself.
+    // TODO: There is a new protected_hardlinks thing in Linux, do it here?
     if (!check_fragment_space(mdr, dir))
       return;
   }
