@@ -3777,9 +3777,14 @@ void Server::handle_client_setattr(MDRequestRef& mdr)
     xlocks.insert(&cur->authlock);
     access_mask |= MAY_CHMOD;
   }
-  if (mask & (CEPH_SETATTR_UID|CEPH_SETATTR_GID|CEPH_SETATTR_BTIME|
-	      CEPH_SETATTR_KILL_SGUID)) {
+  if (mask & (CEPH_SETATTR_UID|CEPH_SETATTR_GID)) {
     xlocks.insert(&cur->authlock);
+    // if we actually try and change the mode we'll set access_mask below
+  }
+  if (mask & (CEPH_SETATTR_BTIME|CEPH_SETATTR_KILL_SGUID)) {
+    xlocks.insert(&cur->authlock);
+    // TODO: If the Client tells us to make these changes,
+    // it's not really optional since they must have written file data...
     access_mask |= MAY_WRITE;
   }
   if (mask & (CEPH_SETATTR_MTIME|CEPH_SETATTR_ATIME|CEPH_SETATTR_SIZE)) {
