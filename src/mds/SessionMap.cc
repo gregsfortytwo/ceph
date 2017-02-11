@@ -912,7 +912,9 @@ int Session::check_access(const CInode *in, unsigned mask,
     return -EIO;
   }
 
-  if (!auth_caps.is_capable(path, in->inode.uid, in->inode.gid, in->inode.mode,
+  const inode_t *inode = in->get_projected_inode();
+
+  if (!auth_caps.is_capable(path, inode->uid, inode->gid, inode->mode,
 			    caller_uid, caller_gid, caller_gid_list, mask,
 			    new_uid, new_gid, no_posix_checks)) {
     return -EACCES;
