@@ -215,7 +215,12 @@ bool MDSAuthCaps::is_capable(const std::string &inode_path,
 	return true;
       }
 
-      if (i->match.uid == MDSCapMatch::MDS_AUTH_UID_ANY) {
+      if (caller_uid == 0) {
+	// > On a traditional UNIX system, the superuser (root, user ID 0) is
+	// > all-powerful, and bypasses all permissions restrictions when
+	// > accessing files.
+	// https://linux.die.net/man/7/path_resolution
+	// So, let it do as it likes since it's passed *our* security checks
         return true;
       }
 
