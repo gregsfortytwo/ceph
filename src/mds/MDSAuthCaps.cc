@@ -200,20 +200,6 @@ bool MDSAuthCaps::is_capable(const std::string &inode_path,
 
     if (i->match.match(inode_path, caller_uid, caller_gid, caller_gid_list) &&
 	i->spec.allows(mask & (MAY_READ|MAY_EXECUTE), mask & MAY_WRITE)) {
-      // we have a match; narrow down GIDs to those specifically allowed here
-      vector<uint64_t> gids;
-      if (std::find(i->match.gids.begin(), i->match.gids.end(), caller_gid) !=
-	  i->match.gids.end()) {
-	gids.push_back(caller_gid);
-      }
-      if (caller_gid_list) {
-	std::set_intersection(i->match.gids.begin(), i->match.gids.end(),
-			      caller_gid_list->begin(), caller_gid_list->end(),
-			      std::back_inserter(gids));
-	std::sort(gids.begin(), gids.end());
-      }
-      
-
       // Spec is non-allowing if caller asked for set pool but spec forbids it
       if (mask & MAY_SET_POOL) {
         if (!i->spec.allows_set_pool()) {
@@ -233,6 +219,20 @@ bool MDSAuthCaps::is_capable(const std::string &inode_path,
 	  continue;
 	}
       }
+
+      // set up list of which gids are allowed here; we need to compare now
+      vector<uint64_t> gids;
+      if (std::find(i->match.gids.begin(), i->match.gids.end(), caller_gid) !=
+	  i->match.gids.end()) {
+	gids.push_back(caller_gid);
+      }
+      if (caller_gid_list) {
+	std::set_intersection(i->match.gids.begin(), i->match.gids.end(),
+			      caller_gid_list->begin(), caller_gid_list->end(),
+			      std::back_inserter(gids));
+	std::sort(gids.begin(), gids.end());
+      }
+
       if (mask & MAY_CHGRP) {
 	// you can only chgrp *to* one of your groups... if you own the file.
 	if (inode_uid != caller_uid ||
