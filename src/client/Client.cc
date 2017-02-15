@@ -11678,6 +11678,8 @@ int Client::_link(Inode *in, Inode *dir, const char *newname, const UserPerm& pe
   if (res < 0)
     goto fail;
   req->set_dentry(de);
+  req->dentry_drop = CEPH_CAP_FILE_SHARED;
+  req->dentry_unless = CEPH_CAP_FILE_EXCL;
   
   res = make_request(req, perm, inp);
   ldout(cct, 10) << "link result is " << res << dendl;
