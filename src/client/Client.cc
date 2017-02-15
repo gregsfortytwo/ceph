@@ -1801,8 +1801,9 @@ int Client::encode_inode_release(Inode *in, MetaRequest *req,
 			 int unless, int force)
 {
   ldout(cct, 20) << "encode_inode_release enter(in:" << *in << ", req:" << req
-	   << " mds:" << mds << ", drop:" << drop << ", unless:" << unless
-	   << ", have:" << ", force:" << force << ")" << dendl;
+		 << " mds:" << mds << ", drop:" << ccap_string(drop)
+		 << ", unless:" << ccap_string(unless)
+		 << ", have:" << ", force:" << force << ")" << dendl;
   int released = 0;
   if (in->caps.count(mds)) {
     Cap *caps = in->caps[mds];
