@@ -1843,6 +1843,12 @@ public:
 
  private:
 
+  struct DelayedOpsTracker {
+    ceph::mutex lock; // TODO: what should this actually be? I'm so confused!
+    map<pg_t, list<Op*>> delayed_ops;
+    
+  };
+
   /**
    * Test pg_pool_t::FLAG_FULL on a pool
    *
