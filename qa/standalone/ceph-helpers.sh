@@ -609,7 +609,6 @@ function run_osd() {
     ceph_args+=" --enable-experimental-unrecoverable-data-corrupting-features=*"
     ceph_args+=" "
     ceph_args+="$@"
-
     mkdir -p $osd_data
 
     local uuid=`uuidgen`
@@ -659,7 +658,6 @@ function run_osd_bluestore() {
     ceph_args+=" --enable-experimental-unrecoverable-data-corrupting-features=*"
     ceph_args+=" "
     ceph_args+="$@"
-
     mkdir -p $osd_data
 
     local uuid=`uuidgen`
