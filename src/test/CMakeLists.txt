@@ -584,12 +584,7 @@ add_ceph_test(test_subman.sh ${CMAKE_CURRENT_SOURCE_DIR}/test_subman.sh)
 add_ceph_test(smoke.sh ${CMAKE_CURRENT_SOURCE_DIR}/smoke.sh)
 add_ceph_test(unittest_bufferlist.sh ${CMAKE_SOURCE_DIR}/src/unittest_bufferlist.sh)
 
-add_test(NAME run-tox-ceph-disk COMMAND bash ${CMAKE_SOURCE_DIR}/src/ceph-disk/run-tox.sh)
-
-set(CEPH_DISK_VIRTUALENV ${CEPH_BUILD_VIRTUALENV}/ceph-disk-virtualenv)
-
 set_property(TEST 
-  run-tox-ceph-disk
   PROPERTY ENVIRONMENT
   CEPH_BUILD_DIR=${CMAKE_BINARY_DIR}
   CEPH_ROOT=${CMAKE_SOURCE_DIR}
