@@ -567,9 +567,6 @@ endif(WITH_RBD)
 if(WITH_RADOSGW)
   add_dependencies(tests radosgw radosgw-admin)
 endif(WITH_RADOSGW)
-if(NOT FREEBSD)
-  add_dependencies(tests ceph-detect-init)
-endif(NOT FREEBSD)
 
 if(WITH_RBD)
   add_ceph_test(run-rbd-unit-tests.sh ${CMAKE_CURRENT_SOURCE_DIR}/run-rbd-unit-tests.sh)
@@ -588,14 +585,11 @@ add_ceph_test(smoke.sh ${CMAKE_CURRENT_SOURCE_DIR}/smoke.sh)
 add_ceph_test(unittest_bufferlist.sh ${CMAKE_SOURCE_DIR}/src/unittest_bufferlist.sh)
 
 add_test(NAME run-tox-ceph-disk COMMAND bash ${CMAKE_SOURCE_DIR}/src/ceph-disk/run-tox.sh)
-add_test(NAME run-tox-ceph-detect-init COMMAND bash ${CMAKE_SOURCE_DIR}/src/ceph-detect-init/run-tox.sh)
 
 set(CEPH_DISK_VIRTUALENV ${CEPH_BUILD_VIRTUALENV}/ceph-disk-virtualenv)
-set(CEPH_DETECT_INIT_VIRTUALENV ${CEPH_BUILD_VIRTUALENV}/ceph-detect-init-virtualenv)
 
 set_property(TEST 
   run-tox-ceph-disk
-  run-tox-ceph-detect-init
   PROPERTY ENVIRONMENT
   CEPH_BUILD_DIR=${CMAKE_BINARY_DIR}
   CEPH_ROOT=${CMAKE_SOURCE_DIR}
