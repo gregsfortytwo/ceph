@@ -29,6 +29,7 @@ public:
   int start_session(EntityName& name, bufferlist::const_iterator& indata, bufferlist& result_bl, AuthCapsInfo& caps) override {
     entity_name = name;
     caps.allow_all = true;
+    caps.approved_cap = true;
     return CEPH_AUTH_NONE;
   }
   int handle_request(bufferlist::const_iterator& indata, bufferlist& result_bl, uint64_t& global_id, AuthCapsInfo& caps) override {

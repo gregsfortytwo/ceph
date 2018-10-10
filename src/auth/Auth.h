@@ -52,9 +52,10 @@ static inline ostream& operator<<(ostream& out, const EntityAuth& a) {
 
 struct AuthCapsInfo {
   bool allow_all;
+  bool approved_cap;
   bufferlist caps;
 
-  AuthCapsInfo() : allow_all(false) {}
+  AuthCapsInfo() : allow_all(false), approved_cap(false) {}
 
   void encode(bufferlist& bl) const {
     using ceph::encode;

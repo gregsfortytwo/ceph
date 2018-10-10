@@ -641,28 +641,32 @@ bool AuthMonitor::prep_auth(MonOpRequestRef op, bool paxos_writable)
       // new session
       proto = s->auth_handler->start_session(entity_name, indata, response_bl, caps_info);
       ret = 0;
-      if (caps_info.allow_all) {
-	s->caps.set_allow_all();
-	s->authenticated = true;
-      }
     } else {
       // request
       ret = s->auth_handler->handle_request(indata, response_bl, s->global_id, caps_info);
     }
+
     if (ret == -EIO) {
       wait_for_active(op, new C_RetryMessage(this,op));
       goto done;
     }
-    if (caps_info.caps.length()) {
-      auto p = caps_info.caps.cbegin();
-      string str;
-      try {
-	decode(str, p);
-      } catch (const buffer::error &err) {
-	derr << "corrupt cap data for " << entity_name << " in auth db" << dendl;
-	str.clear();
+
+    if (caps_info.approved_cap) {
+      if (caps_info.caps.length()) {
+	auto p = caps_info.caps.cbegin();
+	string str;
+	try {
+	  decode(str, p);
+	} catch (const buffer::error &err) {
+	  derr << "corrupt cap data for " << entity_name << " in auth db" << dendl;
+	  str.clear();
+	}
+	s->caps.parse(str, NULL);
       }
-      s->caps.parse(str, NULL);
+
+      if (caps_info.allow_all) {
+	s->caps.set_allow_all();
+      }
       s->authenticated = true;
       finished = true;
     }
