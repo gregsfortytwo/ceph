@@ -9,3 +9,9 @@ overrides:
         ms inject internal delays: .002
       mgr:
         debug monc: 10
+      mon.c:
+        ms inject socket failures: 2500
+        ms inject delay type: mon mds osd mgr client
+        ms inject delay probability: 1
+        ms inject delay max: 1
+        ms inject internal delays: .002
