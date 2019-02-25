@@ -3,9 +3,10 @@ overrides:
     conf:
       global:
         ms inject socket failures: 2500
-        ms inject delay type: mon
-        ms inject delay probability: .005
-        ms inject delay max: 1
+        ms inject delay name: mon.c
+        ms inject delay probability: 1
+        ms inject delay max: 1.1
+        ms inject delay min: 0.7
         ms inject internal delays: .002
       mgr:
         debug monc: 10
@@ -13,5 +14,6 @@ overrides:
         ms inject socket failures: 2500
         ms inject delay type: mon mds osd mgr client
         ms inject delay probability: 1
-        ms inject delay max: 1
+        ms inject delay max: 1.1
+        ms inject delay min: 0.7
         ms inject internal delays: .002
