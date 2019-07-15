@@ -40,6 +40,7 @@ namespace {
     map<int, Owner*> electors;
     map<int, set<int> > blocked_messages;
     int count;
+    set<int> disallowed_leaders;
 
     vector< function<void()> > messages;
     
@@ -47,6 +48,7 @@ namespace {
     ~Election();
     // ElectionOwner interfaces
     int get_paxos_size() { return count; }
+    const set<int>& get_disallowed_leaders() { return disallowed_leaders; }
     void propose_to(int from, int to, epoch_t e);
     void defer_to(int from, int to, epoch_t e);
     void claim_victory(int from, int to, epoch_t e, const set<int>& members);
@@ -62,6 +64,7 @@ namespace {
     void block_bidirectional_messages(int a, int b);
     void unblock_messages(int from, int to);
     void unblock_bidirectional_messages(int a, int b);
+    void add_disallowed_leader(int disallowed) { disallowed_leaders.insert(disallowed); }
   };
   struct Owner : public ElectionOwner {
     Election *parent;
@@ -103,6 +106,7 @@ namespace {
     }
     bool ever_participated() { return ever_joined; }
     unsigned paxos_size() { return parent->get_paxos_size(); }
+    const set<int>& get_disallowed_leaders() { return parent->get_disallowed_leaders(); }
     void cancel_timer() {
       timer_steps = -1;
     }
@@ -366,4 +370,23 @@ TEST(election, blocked_connection_continues_election)
   steps = election.run_timesteps(100);
   cerr << "ran in " << steps << " timesteps" << std::endl;
   ASSERT_TRUE(election.election_stable());
+}
+
+TEST(election, disallowed_doesnt_win)
+{
+  Election election(5);
+  election.add_disallowed_leader(0);
+  election.start_all();
+  int steps = election.run_timesteps(0);
+  cerr << "ran in " << steps << " timesteps" << std::endl;
+  ASSERT_TRUE(election.election_stable());
+  Owner *first_o = election.electors[0];
+  int leader = first_o->logic.get_acked_leader();
+  int epoch = first_o->logic.get_epoch();
+  for (auto i : election.electors) {
+    Owner *o = i.second;
+    ASSERT_EQ(leader, o->logic.get_acked_leader());
+    ASSERT_EQ(epoch, o->logic.get_epoch());
+  }
+  ASSERT_NE(0, leader);
 }

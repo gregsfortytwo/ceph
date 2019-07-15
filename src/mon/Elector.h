@@ -200,6 +200,9 @@ class Elector : public ElectionOwner {
   bool ever_participated();
   /* Retrieve monmap->size() */
   unsigned paxos_size();
+  /* Right now we don't disallow anybody */
+  set<int> disallowed_leaders;
+  const set<int>& get_disallowed_leaders() { return disallowed_leaders; }
   /**
    * Reset the expire_event timer so we can limit the amount of time we 
    * will be electing. Clean up our peer_info.

@@ -82,8 +82,18 @@ public:
   /**
    * Ask the ElectionOwner for the size of the Paxos set. This includes
    * those monitors which may not be in the current quorum!
+   * The value returned by this function can change between elections,
+   * but not during them. (In practical terms, it can be updated
+   * by making a paxos commit, but not by injecting values while
+   * an election is ongoing.)
    */
   virtual unsigned paxos_size() = 0;
+  /**
+   * Retrieve a list of ranks which are not allowed to become the leader.
+   * Like paxos_size(), This set can change between elections, but not
+   * during them.
+   */
+  virtual const set<int>& get_disallowed_leaders() = 0;
   /**
    * Tell the ElectionOwner we have started a new election.
    *
