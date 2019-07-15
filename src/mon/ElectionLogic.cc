@@ -24,6 +24,22 @@ static ostream& _prefix(std::ostream *_dout, epoch_t epoch, ElectionOwner* elect
   return *_dout << "paxos." << elector->get_my_rank()
 		<< ").electionLogic(" <<  epoch << ") ";
 }
+
+void ElectionLogic::set_priority_order(std::vector<int>& order)
+{
+  assert(order.size() == elector->paxos_size());
+  priority_order = order;
+  priority.resize(order.size());
+  for (int i = 0; i < order.size(); ++i) {
+    priority[priority_order[i]] = i;
+  }
+}
+
+void ElectionLog::set_disallowed_leaders(std::set<int>& disallowed)
+{
+  disallowed_leader_ranks = disallowed;
+}
+
 void ElectionLogic::init()
 {
   epoch = elector->read_persisted_epoch();
@@ -150,7 +166,6 @@ void ElectionLogic::receive_propose(int from, epoch_t mepoch)
       return;
     }
   }
-
   if (elector->get_my_rank() < from) {
     // i would win over them.
     if (leader_acked >= 0) {        // we already acked someone

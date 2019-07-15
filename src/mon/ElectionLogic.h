@@ -139,6 +139,22 @@ class ElectionLogic {
    * Indicates who we have acked
    */
   int leader_acked;
+  /**
+   * Specify the order in which we want to choose leaders (first to last)
+   * when they are able
+   * order -> rank
+   */
+  std::vector<int> priority_order;
+  /**
+   * The priority, from 0 (best) to max (worst) assigned to each rank.
+   * rank -> order
+   */
+  std::vector<int> priority;
+  /**
+   * Set of ranks we really don't want to be leader. They can ack
+   * but never be ack'ed.
+   */
+  std::set<int> disallowed_leader_ranks;
 public:
   /**
    * Indicates if we are participating in the quorum.
@@ -171,6 +187,16 @@ public:
 						    epoch(0), leader_acked(-1),
 						    participating(true),
 						    electing_me(false) {}
+  /**
+   * Set the preferred order of leadership (when all participants are working)
+   * that will be used in subsequent elections.
+   */
+  void set_priority_order(std::vector<int>& order);
+  /*
+   * Ranks in the disallowed set fall below all other ranks
+   * when electing a leader.
+   */
+  void set_disallowed_leaders(std::set<int>& disallowed);
   /**
    * If there are no other peers in this Paxos group, ElectionOwner
    * can simply declare victory and we will make it so.
