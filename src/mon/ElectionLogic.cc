@@ -134,6 +134,12 @@ void ElectionLogic::declare_victory()
   elector->message_victory(new_quorum);
 }
 
+bool ElectionLogic::should_defer_to_first(int a, int b)
+{
+  if (a == b) return true;
+  return (a < b);
+}
+
 void ElectionLogic::receive_propose(int from, epoch_t mepoch)
 {
   if (mepoch > epoch) {
@@ -158,10 +164,13 @@ void ElectionLogic::receive_propose(int from, epoch_t mepoch)
   bool me_disallowed = disallowed_leaders.count(my_rank);
   bool from_disallowed = disallowed_leaders.count(from);
   bool my_win = !me_disallowed && // we are allowed to lead
-    (my_rank < from || from_disallowed); // we are a better choice than them
+    (should_defer_to_first(my_rank, from) ||
+     from_disallowed); // we are a better choice than them
   bool their_win = !from_disallowed && // they are allowed to lead
-    (my_rank > from || me_disallowed) && // they are a better choice than us
-    (leader_acked < 0 || leader_acked >= from); // they are a better choice than our previously-acked choice
+    (should_defer_to_first(from, my_rank) ||
+     me_disallowed) && // they are a better choice than us
+    (leader_acked < 0 ||
+     should_defer_to_first(from, leader_acked)); // better than previously-acked
     
   
   if (my_win) {
@@ -210,7 +219,8 @@ void ElectionLogic::receive_ack(int from, epoch_t from_epoch)
 
 bool ElectionLogic::receive_victory_claim(int from, epoch_t from_epoch)
 {
-  ceph_assert(from < elector->get_my_rank() || elector->get_disallowed_leaders().count(elector->get_my_rank()));
+  ceph_assert(should_defer_to_first(from, elector->get_my_rank()) ||
+	      elector->get_disallowed_leaders().count(elector->get_my_rank()));
   ceph_assert(from_epoch % 2 == 0);  
 
   leader_acked = -1;

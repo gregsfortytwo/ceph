@@ -317,6 +317,15 @@ private:
    */
   void bump_epoch(epoch_t e);
   /**
+   * Determine whether rank a should defer to rank b
+   * based on our selection process. This does not account for
+   * disallowed_leaders, which should be before calling this function.
+   * If you pass in equal values, it always returns true.
+   * At present the logic is a simple less-than, to match
+   * existing behavior.
+   */
+  static bool should_defer_to_first(int a, int b);
+  /**
    * Defer the current election to some other monitor.
    *
    * This means that we will ack some other monitor and drop out from the run
