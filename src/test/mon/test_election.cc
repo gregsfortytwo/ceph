@@ -389,19 +389,27 @@ TEST(election, blocked_connection_continues_election)
 
 TEST(election, disallowed_doesnt_win)
 {
-  Election election(5);
-  election.add_disallowed_leader(0);
-  election.start_all();
-  int steps = election.run_timesteps(0);
-  ldout(g_ceph_context, 1) << "ran in " << steps << " timesteps" << dendl;
-  ASSERT_TRUE(election.election_stable());
-  Owner *first_o = election.electors[0];
-  int leader = first_o->logic.get_acked_leader();
-  int epoch = first_o->logic.get_epoch();
-  for (auto i : election.electors) {
-    Owner *o = i.second;
-    ASSERT_EQ(leader, o->logic.get_acked_leader());
-    ASSERT_EQ(epoch, o->logic.get_epoch());
+  int MON_COUNT = 5;
+  for (int i = 0; i < MON_COUNT - 1; ++i) {
+    Election election(MON_COUNT);
+    for (int j = 0; j <= i; ++j) {
+      election.add_disallowed_leader(j);
+    }
+    election.start_all();
+    int steps = election.run_timesteps(0);
+    ldout(g_ceph_context, 1) << "ran in " << steps << " timesteps" << dendl;
+    ASSERT_TRUE(election.election_stable());
+    Owner *first_o = election.electors[0];
+    int leader = first_o->logic.get_acked_leader();
+    int epoch = first_o->logic.get_epoch();
+    for (auto i : election.electors) {
+      Owner *o = i.second;
+      ASSERT_EQ(leader, o->logic.get_acked_leader());
+      ASSERT_EQ(epoch, o->logic.get_epoch());
+    }
+    for (int j = 0; j <= i; ++j) {
+      ASSERT_NE(j, leader);
+    }
   }
-  ASSERT_NE(0, leader);
 }
+
