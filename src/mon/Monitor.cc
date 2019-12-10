@@ -372,6 +372,10 @@ int Monitor::do_admin_command(
     } else {
       err << "needs a valid 'quorum' command" << std::endl;
     }
+  } else if (command == "connection scores dump") {
+    elector.dump_connection_scores(f);
+  } else if (command == "connection scores reset") {
+    elector.notify_clear_peer_state();
   } else if (command == "smart") {
     string want_devid;
     cmd_getval(cct, cmdmap, "devid", want_devid);
@@ -907,6 +911,14 @@ int Monitor::preinit()
     "show heap usage info (available only if compiled with tcmalloc)");
   ceph_assert(r == 0);
 
+  r = admin_socket->register_command("connection scores dump",
+				     admin_hook,
+				     "show the scores used in CONNECTIVITY-based elections");
+  ceph_assert(r == 0);
+  r = admin_socket->register_command("connection scores reset",
+				     admin_hook,
+				     "reset the scores used in CONNECTIVITY-based elections");
+  ceph_assert(r == 0);
   l.lock();
 
   // add ourselves as a conf observer
