@@ -17,6 +17,10 @@
 
 #include "include/types.h"
 
+/*namespace ceph {
+  class Formatter;
+  }*/
+
 struct ConnectionReport {
   int rank = -1; // mon rank this state belongs to
   std::map<int, bool> current; // true if connected to the other mon
@@ -47,6 +51,9 @@ struct ConnectionReport {
       o.epoch_version == epoch_version;
   }
   friend std::ostream& operator<<(std::ostream&o, const ConnectionReport& c);
+
+  void dump(ceph::Formatter *f) const;
+  static void generate_test_instances(std::list<ConnectionReport*>& o);
 };
 WRITE_CLASS_ENCODER(ConnectionReport);
 
@@ -166,6 +173,8 @@ class ConnectionTracker {
   }
 
  public:
+  ConnectionTracker() : epoch(0), version(0), half_life(12*60*60),
+			owner(NULL), rank(-1), persist_interval(10) {}
   ConnectionTracker(RankProvider *o, int rank, double hl,
 		    int persist_i) :
     epoch(0), version(0),
@@ -209,6 +218,8 @@ class ConnectionTracker {
   friend std::ostream& operator<<(std::ostream& o, const ConnectionTracker& c);
   friend ConnectionReport *get_connection_reports(ConnectionTracker& ct);
   friend map<int,ConnectionReport> *get_peer_reports(ConnectionTracker& ct);
+  void dump(ceph::Formatter *f) const;
+  static void generate_test_instances(std::list<ConnectionTracker*>& o);
 };
 
 WRITE_CLASS_ENCODER(ConnectionTracker);
