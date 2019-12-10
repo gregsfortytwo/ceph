@@ -1168,7 +1168,9 @@ function test_mon_mon()
   expect_false ceph mon feature set abcd --yes-i-really-mean-it
 
   ceph mon set election strategy DISALLOW
+  ceph mon add disallowed leader $first
   ceph mon set election strategy CONNECTIVITY
+  ceph mon rm disallowed leader $first
   ceph mon set election strategy CLASSIC
 }
 
