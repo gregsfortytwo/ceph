@@ -1167,11 +1167,13 @@ function test_mon_mon()
   expect_false ceph mon feature set abcd
   expect_false ceph mon feature set abcd --yes-i-really-mean-it
 
+  expect_failure ceph mon add disallowed leader $first
   ceph mon set election strategy DISALLOW
   ceph mon add disallowed leader $first
   ceph mon set election strategy CONNECTIVITY
   ceph mon rm disallowed leader $first
   ceph mon set election strategy CLASSIC
+  expect_failure ceph mon rm disallowed leader $first
 }
 
 function test_mon_priority_and_weight()
