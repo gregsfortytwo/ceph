@@ -1239,10 +1239,13 @@ OSDMonitor::update_pending_pgs(const OSDMap::Incremental& inc,
       // this mirrors PG::start_peering_interval()
       pg_t pgid = i.first;
 
-      // this is a bit imprecise, but sufficient?
-      struct min_size_predicate_t : public IsPGRecoverablePredicate {
+      // this is a bit imprecise, but sufficient?f
+      // TODO: Okay, now it's a big cheat but I think it's okay for creating pgs?
+      struct min_size_predicate_t : public IsPGAllowedToActivatePredicate {
 	const pg_pool_t *pi;
-	bool operator()(const set<pg_shard_t> &have) const {
+	bool operator()(const set<pg_shard_t> &have,
+			const pg_pool_t& pg_pool,
+			const shared_ptr<CrushWrapper>& crush) const {
 	  return have.size() >= pi->min_size;
 	}
 	explicit min_size_predicate_t(const pg_pool_t *i) : pi(i) {}

@@ -577,6 +577,7 @@ public:
    * ECRecPred
    *
    * Determines the whether _have is sufficient to recover an object
+   * Update ECActPred for any bugfixes too.
    */
   class ECRecPred : public IsPGRecoverablePredicate {
     set<int> want;
@@ -598,8 +599,34 @@ public:
       return ec_impl->minimum_to_decode(want, have, &min) == 0;
     }
   };
+  // For now, this is a copyh of ECRecPred
+  class ECActPred : public IsPGAllowedToActivatePredicate {
+    set<int> want;
+    ErasureCodeInterfaceRef ec_impl;
+  public:
+    explicit ECActPred(ErasureCodeInterfaceRef ec_impl) : ec_impl(ec_impl) {
+      for (unsigned i = 0; i < ec_impl->get_chunk_count(); ++i) {
+	want.insert(i);
+      }      
+    }
+    bool operator()(const set<pg_shard_t> & _have,
+		    const pg_pool_t& pg_pool,
+		    const shared_ptr<CrushWrapper>& crush) const override {
+      set<int> have;
+      for (set<pg_shard_t>::const_iterator i = _have.begin();
+	   i != _have.end();
+	   ++i) {
+	have.insert(i->shard);
+      }
+      map<int, vector<pair<int, int>>> min;
+      return ec_impl->minimum_to_decode(want, have, &min) == 0;
+    }
+  };
   IsPGRecoverablePredicate *get_is_recoverable_predicate() const override {
     return new ECRecPred(ec_impl);
+  }
+  IsPGAllowedToActivatePredicate *get_is_allowed_to_activate_predicate() const override {
+    return new ECActPred(ec_impl);
   }
 
   int get_ec_data_chunk_count() const override {

@@ -76,6 +76,33 @@ public:
     return new RPCRecPred;
   }
 
+  class RPCActivatePred : public IsPGAllowedToActivatePredicate {
+  public:
+    bool operator()(const set<pg_shard_t> & have,
+		    const pg_pool_t& pg_pool,
+		    const shared_ptr<CrushWrapper>& crush) const override {
+      if (!pg_pool.peering_crush_bucket_limit_enabled) {
+	return !have.empty();
+      }
+      // okay, we have to make sure we have shards in different buckets
+      uint32_t barrier_num = pg_pool.peering_crush_bucket_barrier;
+      set<int> ancestors;
+      for (const pg_shard_t& shard : have) {
+	int ancestor = crush->get_parent_of_type(shard.osd, barrier_num,
+						pg_pool.crush_rule);
+	ancestors.insert(ancestor);
+	if (ancestors.size() >= barrier_num) {
+	  return true;
+	}
+      }
+      // darn, we don't have shards in enough CRUSH buckets!
+      return false;
+    }
+  };
+  IsPGAllowedToActivatePredicate *get_is_allowed_to_activate_predicate() const override {
+    return new RPCActivatePred;
+  }
+  
   class RPCReadPred : public IsPGReadablePredicate {
     pg_shard_t whoami;
   public:

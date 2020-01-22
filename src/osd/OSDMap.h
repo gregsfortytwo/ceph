@@ -364,6 +364,7 @@ public:
     int64_t new_pool_max; //incremented by the OSDMonitor on each pool create
     int32_t new_flags;
     ceph_release_t new_require_osd_release{0xff};
+    bool turn_on_stretch_mode{false};
 
     // full (rare)
     ceph::buffer::list fullmap;  // in lieu of below.
@@ -547,6 +548,7 @@ private:
     CEPH_FEATUREMASK_SERVER_MIMIC |
     CEPH_FEATUREMASK_SERVER_NAUTILUS |
     CEPH_FEATUREMASK_SERVER_OCTOPUS;
+  // TODO: add a SIGNIFICANT_FEATURE for stretch mode...
 
   struct addrs_s {
     mempool::osdmap::vector<std::shared_ptr<entity_addrvec_t> > client_addrs;
@@ -613,6 +615,7 @@ private:
   uint32_t get_crc() const { return crc; }
 
   std::shared_ptr<CrushWrapper> crush;       // hierarchical map
+  bool stretch_mode_enabled;
 private:
   uint32_t crush_version = 1;
 
@@ -632,7 +635,8 @@ private:
 	     new_blacklist_entries(false),
 	     cached_up_osd_features(0),
 	     crc_defined(false), crc(0),
-	     crush(std::make_shared<CrushWrapper>()) {
+	     crush(std::make_shared<CrushWrapper>()),
+	     stretch_mode_enabled(false) {
   }
 
 private:

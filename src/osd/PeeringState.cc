@@ -604,7 +604,7 @@ void PeeringState::start_peering_interval(
       osdmap.get(),
       lastmap.get(),
       info.pgid.pgid,
-      missing_loc.get_recoverable_predicate(),
+      missing_loc.get_allowed_to_activate_predicate(),
       &past_intervals,
       &debug);
     psdout(10) << __func__ << ": check_new_interval output: "

@@ -1527,6 +1527,10 @@ void pg_pool_t::dump(Formatter *f) const
   f->dump_int("size", get_size());
   f->dump_int("min_size", get_min_size());
   f->dump_int("crush_rule", get_crush_rule());
+  f->dump_int("peering_crush_bucket_barrier", peering_crush_bucket_barrier);
+  f->dump_int("peering_crush_bucket_count", peering_crush_bucket_count);
+  f->dump_bool("peering_crush_bucket_limit_enabled",
+	      peering_crush_bucket_limit_enabled);
   f->dump_int("object_hash", get_object_hash());
   f->dump_string("pg_autoscale_mode",
 		 get_pg_autoscale_mode_name(pg_autoscale_mode));
@@ -1917,7 +1921,7 @@ void pg_pool_t::encode(ceph::buffer::list& bl, uint64_t features) const
     return;
   }
 
-  uint8_t v = 29;
+  uint8_t v = 30;
   // NOTE: any new encoding dependencies must be reflected by
   // SIGNIFICANT_FEATURES
   if (!(features & CEPH_FEATURE_NEW_OSDOP_ENCODING)) {
@@ -1932,6 +1936,7 @@ void pg_pool_t::encode(ceph::buffer::list& bl, uint64_t features) const
     v = 27;
   }
 
+  uint8_t new_compat = 0;
   ENCODE_START(v, 5, bl);
   encode(type, bl);
   encode(size, bl);
@@ -2020,12 +2025,23 @@ void pg_pool_t::encode(ceph::buffer::list& bl, uint64_t features) const
   if (v >= 29) {
     encode(last_pg_merge_meta, bl);
   }
-  ENCODE_FINISH(bl);
+  if (peering_crush_bucket_barrier != 0 ||
+      peering_crush_bucket_limit_enabled ||
+      peering_crush_bucket_count !=0) {
+    ceph_assert(v >= 30);
+    new_compat = 30;
+  }
+  if (v >= 30) {
+    encode(peering_crush_bucket_barrier, bl);
+    encode(peering_crush_bucket_count, bl);
+    encode(peering_crush_bucket_limit_enabled, bl);
+  }
+  ENCODE_FINISH_NEW_COMPAT(bl, new_compat);
 }
 
 void pg_pool_t::decode(ceph::buffer::list::const_iterator& bl)
 {
-  DECODE_START_LEGACY_COMPAT_LEN(29, 5, 5, bl);
+  DECODE_START_LEGACY_COMPAT_LEN(30, 5, 5, bl);
   decode(type, bl);
   decode(size, bl);
   decode(crush_rule, bl);
@@ -2199,6 +2215,11 @@ void pg_pool_t::decode(ceph::buffer::list::const_iterator& bl)
     pg_num_pending = pg_num;
     last_force_op_resend = last_force_op_resend_prenautilus;
     pg_autoscale_mode = pg_autoscale_mode_t::WARN;    // default to warn on upgrade
+  }
+  if (struct_v >= 30) {
+    decode(peering_crush_bucket_barrier, bl);
+    decode(peering_crush_bucket_count, bl);
+    decode(peering_crush_bucket_limit_enabled, bl);
   }
   DECODE_FINISH(bl);
   calc_pg_masks();
@@ -4000,7 +4021,7 @@ bool PastIntervals::check_new_interval(
   const OSDMap *osdmap,
   const OSDMap *lastmap,
   pg_t pgid,
-  const IsPGRecoverablePredicate &could_have_gone_active,
+  const IsPGAllowedToActivatePredicate &could_have_gone_active,
   PastIntervals *past_intervals,
   std::ostream *out)
 {
@@ -4085,7 +4106,8 @@ bool PastIntervals::check_new_interval(
     if (num_acting &&
 	i.primary != -1 &&
 	num_acting >= old_pg_pool.min_size &&
-        could_have_gone_active(old_acting_shards)) {
+        could_have_gone_active(old_acting_shards, old_pg_pool,
+			       lastmap->crush)) {
       if (out)
 	*out << __func__ << " " << i
 	     << " up_thru " << lastmap->get_up_thru(i.primary)

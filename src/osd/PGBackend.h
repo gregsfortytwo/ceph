@@ -413,6 +413,7 @@ typedef std::shared_ptr<const OSDMap> OSDMapRef;
    virtual void clear_recovery_state() = 0;
 
    virtual IsPGRecoverablePredicate *get_is_recoverable_predicate() const = 0;
+   virtual IsPGAllowedToActivatePredicate *get_is_allowed_to_activate_predicate() const = 0;
    virtual IsPGReadablePredicate *get_is_readable_predicate() const = 0;
    virtual int get_ec_data_chunk_count() const { return 0; };
    virtual int get_ec_stripe_chunk_size() const { return 0; };

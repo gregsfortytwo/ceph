@@ -1594,7 +1594,8 @@ PrimaryLogPG::PrimaryLogPG(OSDService *o, OSDMapRef curmap,
 { 
   recovery_state.set_backend_predicates(
     pgbackend->get_is_readable_predicate(),
-    pgbackend->get_is_recoverable_predicate());
+    pgbackend->get_is_recoverable_predicate(),
+    pgbackend->get_is_allowed_to_activate_predicate());
   snap_trimmer_machine.initiate();
 }
 
