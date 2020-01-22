@@ -4958,9 +4958,11 @@ void OSD::build_initial_pg_history(
       pgid.pgid, &new_up, &new_up_primary, &new_acting, &new_acting_primary);
 
     // this is a bit imprecise, but sufficient?
-    struct min_size_predicate_t : public IsPGRecoverablePredicate {
+    struct min_size_predicate_t : public IsPGAllowedToActivatePredicate {
       const pg_pool_t *pi;
-      bool operator()(const set<pg_shard_t> &have) const {
+      bool operator()(const set<pg_shard_t> &have,
+		      const pg_pool_t& pg_pool,
+		      const shared_ptr<CrushWrapper>& crush) const {
 	return have.size() >= pi->min_size;
       }
       explicit min_size_predicate_t(const pg_pool_t *i) : pi(i) {}

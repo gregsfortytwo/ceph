@@ -109,6 +109,7 @@ class MissingLoc {
  public:
   boost::scoped_ptr<IsPGReadablePredicate> is_readable;
   boost::scoped_ptr<IsPGRecoverablePredicate> is_recoverable;
+  boost::scoped_ptr<IsPGAllowedToActivatePredicate> is_allowed_to_activate;
   explicit MissingLoc(
     spg_t pgid,
     MappingInfo *mapping_info,
@@ -117,12 +118,17 @@ class MissingLoc {
     : pgid(pgid), mapping_info(mapping_info), dpp(dpp), cct(cct) { }
   void set_backend_predicates(
     IsPGReadablePredicate *_is_readable,
-    IsPGRecoverablePredicate *_is_recoverable) {
+    IsPGRecoverablePredicate *_is_recoverable,
+    IsPGAllowedToActivatePredicate *_is_allowed_to_activate) {
     is_readable.reset(_is_readable);
     is_recoverable.reset(_is_recoverable);
+    is_allowed_to_activate.reset(_is_allowed_to_activate);
   }
   const IsPGRecoverablePredicate &get_recoverable_predicate() const {
     return *is_recoverable;
+  }
+  const IsPGAllowedToActivatePredicate &get_allowed_to_activate_predicate() const {
+    return *is_allowed_to_activate;
   }
   std::ostream& gen_prefix(std::ostream& out) const {
     return dpp->gen_prefix(out);

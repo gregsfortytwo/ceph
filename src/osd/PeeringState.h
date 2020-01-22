@@ -1690,8 +1690,10 @@ public:
   /// Set predicates used for determining readable and recoverable
   void set_backend_predicates(
     IsPGReadablePredicate *is_readable,
-    IsPGRecoverablePredicate *is_recoverable) {
-    missing_loc.set_backend_predicates(is_readable, is_recoverable);
+    IsPGRecoverablePredicate *is_recoverable,
+    IsPGAllowedToActivatePredicate *is_allowed_to_activate) {
+    missing_loc.set_backend_predicates(is_readable, is_recoverable,
+				       is_allowed_to_activate);
   }
 
   /// Send current pg_info to peers
