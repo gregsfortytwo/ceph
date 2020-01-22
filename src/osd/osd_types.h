@@ -210,6 +210,8 @@ public:
   virtual ~IsPGRecoverablePredicate() {}
 };
 
+class IsPGAllowedToActivatePredicate;
+
 class IsPGReadablePredicate {
 public:
   /**
@@ -1373,7 +1375,10 @@ public:
   std::map<std::string, std::string> properties;  ///< OBSOLETE
   std::string erasure_code_profile; ///< name of the erasure code profile in OSDMap
   epoch_t last_change = 0;      ///< most recent epoch changed, exclusing snapshot changes
-
+  // require OSDs be in different instances of this bucket type...
+  int peering_crush_bucket_barrier = 0;
+  // ...if the limit is enabled:
+  bool peering_crush_bucket_limit_enabled = false;
   /// last epoch that forced clients to resend
   epoch_t last_force_op_resend = 0;
   /// last epoch that forced clients to resend (pre-nautilus clients only)
@@ -1730,6 +1735,17 @@ WRITE_CLASS_ENCODER_FEATURES(pg_pool_t)
 
 std::ostream& operator<<(std::ostream& out, const pg_pool_t& p);
 
+class CrushWrapper;
+class IsPGAllowedToActivatePredicate {
+  public:
+  /**
+   * have encodes the shards available
+   */
+  virtual bool operator()(const std::set<pg_shard_t> &have,
+			  const pg_pool_t& pg_pool,
+			  const shared_ptr<CrushWrapper>& crush) const = 0;
+  virtual ~IsPGAllowedToActivatePredicate() {}
+};
 
 /**
  * a summation of object stats
@@ -3219,7 +3235,7 @@ public:
     const OSDMap *osdmap,      ///< [in] current map
     const OSDMap *lastmap,     ///< [in] last map
     pg_t pgid,                                  ///< [in] pgid for pg
-    const IsPGRecoverablePredicate &could_have_gone_active, ///< [in] predicate whether the pg can be active
+    const IsPGAllowedToActivatePredicate &could_have_gone_active, ///< [in] predicate whether the pg can be active
     PastIntervals *past_intervals,              ///< [out] intervals
     std::ostream *out = 0                            ///< [out] debug ostream
     );
@@ -3237,7 +3253,7 @@ public:
     OSDMapRef osdmap,      ///< [in] current map
     OSDMapRef lastmap,     ///< [in] last map
     pg_t pgid,                                  ///< [in] pgid for pg
-    const IsPGRecoverablePredicate &could_have_gone_active, ///< [in] predicate whether the pg can be active
+    const IsPGAllowedToActivatePredicate &could_have_gone_active, ///< [in] predicate whether the pg can be active
     PastIntervals *past_intervals,              ///< [out] intervals
     std::ostream *out = 0                            ///< [out] debug ostream
     ) {

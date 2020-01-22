@@ -143,7 +143,7 @@ for (unsigned i = 0; i < 4; ++i) {
   int64_t pool_id = 200;
   int pg_num = 4;
   __u8 min_size = 2;
-  boost::scoped_ptr<IsPGRecoverablePredicate> recoverable(new ReplicatedBackend::RPCRecPred());
+  boost::scoped_ptr<IsPGAllowedToActivatePredicate> recoverable(new ReplicatedBackend::RPCActivatePred());
   {
     OSDMap::Incremental inc(epoch + 1);
     inc.new_pools[pool_id].min_size = min_size;
