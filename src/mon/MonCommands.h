@@ -468,6 +468,18 @@ COMMAND("mon set-weight "
 COMMAND("mon enable-msgr2",
 	"enable the msgr2 protocol on port 3300",
 	"mon", "rw")
+COMMAND("mon set election_strategy " \
+	"name=strategy,type=CephString", \
+	"set the election strategy to use; choices classic, disallow, connectivity", \
+	"mon", "rw")
+COMMAND("mon add disallowed_leader " \
+	"name=name,type=CephString", \
+	"prevent the named mon from being a leader", \
+	"mon", "rw")
+COMMAND("mon rm disallowed_leader " \
+	"name=name,type=CephString", \
+	"allow the named mon to be a leader again", \
+	"mon", "rw")
 
 /*
  * OSD commands
@@ -1256,6 +1268,14 @@ COMMAND_WITH_FLAG("heap "
             "show heap usage info (available only if compiled with tcmalloc)",
 	    "mon", "rw",
             FLAG(TELL))
+COMMAND_WITH_FLAG("connection scores dump",
+		  "show the scores used in connectivity-based elections",
+		  "mon", "rwx",
+		  FLAG(TELL))
+COMMAND_WITH_FLAG("connection scores reset",
+		  "reset the scores used in connectivity-based elections",
+		  "mon", "rwx",
+		  FLAG(TELL))
 COMMAND_WITH_FLAG("sync_force "
             "name=validate,type=CephChoices,strings=--yes-i-really-mean-it,req=false",
             "force sync of and clear monitor store",

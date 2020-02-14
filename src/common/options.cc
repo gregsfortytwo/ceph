@@ -1531,6 +1531,11 @@ std::vector<Option> get_global_options() {
     .add_service("mon")
     .set_description("maximum time for a mon election (seconds)"),
 
+    Option("mon_election_default_strategy", Option::TYPE_UINT, Option::LEVEL_ADVANCED)
+    .set_default(1)
+    .set_min_max(1, 3)
+    .set_description("The election strategy to set when constructing the first monmap."),
+
     Option("mon_lease", Option::TYPE_FLOAT, Option::LEVEL_ADVANCED)
     .set_default(5)
     .add_service("mon")
@@ -1557,6 +1562,35 @@ std::vector<Option> get_global_options() {
     .add_service("mon")
     .set_description("multiple of mon_lease for follower mons to accept proposed state changes before calling a new election")
     .add_see_also("mon_lease"),
+
+    Option("mon_elector_ping_timeout", Option::TYPE_FLOAT, Option::LEVEL_ADVANCED)
+    .set_default(2.0)
+    .add_service("mon")
+    .set_description("The time after which a ping 'times out' and a connection is considered down")
+    .add_see_also("mon_elector_ping_divisor"),
+
+    Option("mon_elector_ping_divisor", Option::TYPE_UINT, Option::LEVEL_ADVANCED)
+    .set_default(2)
+    .add_service("mon")
+    .set_description("We will send a ping up to this many times per timeout per")
+    .add_see_also("mon_elector_ping_timeout"),
+
+    Option("mon_con_tracker_persist_interval", Option::TYPE_UINT, Option::LEVEL_ADVANCED)
+    .set_default(10)
+    .set_min_max(1, 100000)
+    .add_service("mon")
+    .set_description("how many updates the ConnectionTracker takes before it persists to disk"),
+
+    Option("mon_con_tracker_score_halflife", Option::TYPE_UINT, Option::LEVEL_ADVANCED)
+    .set_default(12*60*60)
+    .set_min(60)
+    .add_service("mon")
+    .set_description("The 'halflife' used when updating/calculating peer connection scores"),
+
+    Option("mon_elector_ignore_propose_margin", Option::TYPE_FLOAT, Option::LEVEL_ADVANCED)
+    .set_default(0.0005)
+    .add_service("mon")
+    .set_description("The difference in connection score allowed before a peon stops ignoring out-of-quorum PROPOSEs"),
 
     Option("mon_clock_drift_allowed", Option::TYPE_FLOAT, Option::LEVEL_ADVANCED)
     .set_default(.050)

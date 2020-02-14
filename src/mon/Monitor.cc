@@ -150,7 +150,7 @@ Monitor::Monitor(CephContext* cct_, string nm, MonitorDBStore *s,
   gss_ktfile_client(cct->_conf.get_val<std::string>("gss_ktab_client_file")),
   store(s),
   
-  elector(this),
+  elector(this, map->strategy),
   required_features(0),
   leader(0),
   quorum_con_features(0),
@@ -372,6 +372,20 @@ int Monitor::do_admin_command(
     } else {
       err << "needs a valid 'quorum' command" << std::endl;
     }
+  } else if (command == "connection scores dump") {
+    if (!get_quorum_mon_features().contains_all(
+				   ceph::features::mon::FEATURE_PINGING)) {
+      err << "Not all monitors support changing election strategies; \
+              please upgrade them first!";
+    }
+    elector.dump_connection_scores(f);
+  } else if (command == "connection scores reset") {
+    if (!get_quorum_mon_features().contains_all(
+				   ceph::features::mon::FEATURE_PINGING)) {
+      err << "Not all monitors support changing election strategies; \
+              please upgrade them first!";
+    }
+    elector.notify_clear_peer_state();
   } else if (command == "smart") {
     string want_devid;
     cmd_getval(cmdmap, "devid", want_devid);
@@ -1146,6 +1160,7 @@ void Monitor::bootstrap()
       dout(0) << " removed from monmap, suicide." << dendl;
       exit(0);
     }
+    elector.notify_clear_peer_state();
   }
   if (newrank >= 0 &&
       monmap->get_addrs(newrank) != messenger->get_myaddrs()) {
@@ -1159,6 +1174,7 @@ void Monitor::bootstrap()
     dout(0) << " my rank is now " << newrank << " (was " << rank << ")" << dendl;
     messenger->set_myname(entity_name_t::MON(newrank));
     rank = newrank;
+    elector.notify_rank_changed(rank);
 
     // reset all connections, or else our peers will think we are someone else.
     messenger->mark_down_all();
@@ -1911,6 +1927,8 @@ void Monitor::handle_probe_probe(MonOpRequestRef op)
     dout(1) << " adding peer " << m->get_source_addrs()
 	    << " to list of hints" << dendl;
     extra_probe_peers.insert(m->get_source_addrs());
+  } else {
+    elector.begin_peer_ping(monmap->get_rank(m->get_source_addr()));
   }
 
  out:
@@ -4516,7 +4534,7 @@ void Monitor::dispatch_op(MonOpRequestRef op)
 
     // elector messages
     case MSG_MON_ELECTION:
-      op->set_type_election();
+      op->set_type_election_or_ping();
       //check privileges here for simplicity
       if (!op->get_session()->is_capable("mon", MON_CAP_X)) {
         dout(0) << "MMonElection received from entity without enough caps!"
@@ -4526,6 +4544,11 @@ void Monitor::dispatch_op(MonOpRequestRef op)
       if (!is_probing() && !is_synchronizing()) {
         elector.dispatch(op);
       }
+      return;
+
+    case MSG_MON_PING:
+      op->set_type_election_or_ping();
+      elector.dispatch(op);
       return;
 
     case MSG_FORWARD:
@@ -6344,4 +6367,17 @@ int Monitor::ms_handle_authentication(Connection *con)
   }
 
   return ret;
+}
+
+void Monitor::notify_new_monmap()
+{
+  elector.notify_strategy_maybe_changed(monmap->strategy);
+  for (auto i : monmap->removed_ranks) {
+    elector.notify_rank_removed(i);
+  }
+  set<int> dl;
+  for (auto name : monmap->disallowed_leaders) {
+    dl.insert(monmap->get_rank(name));
+  }
+  elector.set_disallowed_leaders(dl);
 }
