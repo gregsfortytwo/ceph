@@ -14,6 +14,7 @@ overrides:
     log-whitelist:
       - overall HEALTH_
       - \(MGR_DOWN\)
+      - \(MON_DOWN\)
 # slow mons -> slow peering -> PG_AVAILABILITY
       - \(PG_AVAILABILITY\)
       - \(SLOW_OPS\)
