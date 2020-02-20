@@ -13971,3 +13971,97 @@ void OSDMonitor::convert_pool_priorities(void)
     pending_inc.new_pools[pool_id] = pool;
   }
 }
+
+void OSDMonitor::try_enable_stretch_mode_pools(stringstream& ss, bool *okay,
+					       int *errcode,
+					       const vector<string>& poolnames,
+					       set<pg_pool_t*>* pools)
+{
+  *okay = false;
+  for (auto poolname : poolnames) {
+    int64_t poolid = osdmap.lookup_pg_pool_name(poolname.c_str());
+    if (poolid < 0) {
+      ss << "unrecognized pool '" << poolname << "'";
+      *errcode = -ENOENT;
+      return;
+    }
+    const pg_pool_t *p = osdmap.get_pg_pool(poolid);
+    if (!p->is_replicated()) {
+      ss << "stretched pools must be replicated; '" << poolname << "' is erasure-coded";
+      *errcode = -EINVAL;
+      return;
+    }
+    if ((p->get_size() != 3) || (p->get_min_size() != 2)) {
+      ss << "we currently require stretch mode pools start out with the"
+	" default 3/2 size/min_size, which '" << poolname << "' does not";
+      *errcode = -EINVAL;
+      return;
+    }
+    pg_pool_t *pp = nullptr;
+    if (pending_inc.new_pools.count(poolid))
+      pp = &pending_inc.new_pools[poolid];
+    if (!pp) {
+      pp = &pending_inc.new_pools[poolid];
+      *pp = *p;
+    }
+    pools->insert(pp);
+  }
+  *okay = true;
+  return;
+}
+
+void OSDMonitor::try_enable_stretch_mode(stringstream& ss, bool *okay,
+					 int *errcode, bool commit,
+					 const string& dividing_bucket,
+					 uint32_t bucket_count,
+					 const set<pg_pool_t*>& pools)
+{
+  *okay = false;
+  CrushWrapper crush;
+  _get_pending_crush(crush);
+  int dividing_id = crush.get_type_id(dividing_bucket);
+  if (dividing_id == -1) { // TODO: Is -1 really a safe number? Isn't that just a host?
+    ss << dividing_bucket << " is not a valid crush bucket type";
+    *errcode = -ENOENT;
+    ceph_assert(!commit || dividing_id != -1);
+    return;
+  }
+  vector<int> subtrees;
+  crush.get_subtree_of_type(dividing_id, &subtrees);
+  if (subtrees.size() != 2) {
+    ss << "there are " << subtrees.size() << dividing_bucket
+       << "'s in the cluster but stretch mode currently only works with 2!";
+    *errcode = -EINVAL;
+    ceph_assert(!commit || subtrees.size() == 2);
+    return;
+  }
+  int weight1 = crush.get_item_weight(subtrees[0]);
+  int weight2 = crush.get_item_weight(subtrees[1]);
+  if (weight1 != weight2) {
+    // TODO: I'm really not sure this is a good idea?
+    ss << "the 2 " << dividing_bucket
+       << "instances in the cluster have differing weights "
+       << weight1 << " and " << weight2
+       <<" but stretch mode currently requires they be the same!";
+    *errcode = -EINVAL;
+    ceph_assert(!commit || (weight1 == weight2));
+    return;
+  }
+  if (bucket_count != 2) {
+    ss << "currently we only support 2-site stretch clusters!";
+    *errcode = -EINVAL;
+    ceph_assert(!commit);
+    return;
+  }
+  // TODO: check CRUSH rules for pools so that we are appropriately divided
+  if (commit) {
+    for (auto pool : pools) {
+      pool->peering_crush_bucket_barrier = dividing_id;
+      pool->peering_crush_bucket_count = bucket_count;
+      pool->peering_crush_bucket_limit_enabled = true;
+    }
+    pending_inc.turn_on_stretch_mode = true;
+  }
+  *okay = true;
+  return;
+}

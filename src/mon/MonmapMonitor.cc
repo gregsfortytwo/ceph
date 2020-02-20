@@ -948,6 +948,70 @@ n     *
     pending_map.mon_info[name].crush_loc = loc;
     err = 0;
     propose = true;
+  } else if (prefix == "mon enable_stretch_mode") {
+    if (!mon->osdmon()->is_writeable()) {
+      dout(1) << __func__
+	      << ":  waiting for osdmon writeable for stretch mode" << dendl;
+      mon->osdmon()->wait_for_writeable(op, new C_RetryMessage(this, op));
+      return false;
+    }
+    {
+      struct Plugger {
+	Paxos *p;
+	Plugger(Paxos *p) : p(p) { p->plug(); }
+	~Plugger() { p->unplug(); }
+      } plugger(paxos); // TODO: I think I need to do this with the concurrent OSDMap/MonMap changes?
+      // TODO: check that we aren't already in stretch mode
+      string tiebreaker_mon;
+      if (!cmd_getval(cmdmap, "tiebreaker_mon", tiebreaker_mon)) {
+	ss << "must specify a tiebreaker monitor";
+	err = -EINVAL;
+	goto reply;
+      }
+      string dividing_bucket;
+      if (!cmd_getval(cmdmap, "dividing_bucket", dividing_bucket)) {
+	ss << "must specify a dividing bucket";
+	err = -EINVAL;
+	goto reply;
+      }
+      vector<string> poolnames;
+      if (!cmd_getval(cmdmap, "pools", poolnames)) {
+	ss << "must specify at least one pool to apply stretch mode to!";
+	err = -EINVAL;
+	goto reply;
+      }
+      set<pg_pool_t*> pools;
+      bool okay = false;
+      int errcode = 0;
+      //okay, initial arguments make sense, check pools and cluster state
+      mon->osdmon()->try_enable_stretch_mode_pools(ss, &okay, &errcode,
+						   poolnames, &pools);
+      if (!okay) {
+	err = errcode;
+	goto reply;
+      }
+      try_enable_stretch_mode(ss, &okay, &errcode, false,
+			      tiebreaker_mon, dividing_bucket);
+      if (!okay) {
+	err = errcode;
+	goto reply;
+      }
+      mon->osdmon()->try_enable_stretch_mode(ss, &okay, &errcode, false,
+					     dividing_bucket, 2, pools);
+      if (!okay) {
+	err = errcode;
+	goto reply;
+      }
+      // everything looks good, actually commit the changes!
+      try_enable_stretch_mode(ss, &okay, &errcode, true,
+			      tiebreaker_mon, dividing_bucket);
+      mon->osdmon()->try_enable_stretch_mode(ss, &okay, &errcode, true,
+					     dividing_bucket,
+					     2, // right now we only support 2 sites
+					     pools);
+      ceph_assert(okay == true);
+    }
+    request_proposal(mon->osdmon());
   } else {
     ss << "unknown command " << prefix;
     err = -EINVAL;
@@ -958,6 +1022,24 @@ reply:
   mon->reply_command(op, err, rs, get_last_committed());
   // we are returning to the user; do not propose.
   return propose;
+}
+
+void MonmapMonitor::try_enable_stretch_mode(stringstream& ss, bool *okay,
+					    int *errcode, bool commit,
+					    const string& tiebreaker_mon,
+					    const string& dividing_bucket)
+{
+  *okay = false;
+  if (!pending_map.contains(tiebreaker_mon)) {
+    ss << "mon " << tiebreaker_mon << "does not seem to exist";
+    *errcode = -ENOENT;
+    ceph_assert(!commit);
+    return;
+  }
+  // TODO: make sure all monitors have locations that match the given split point
+  // TODO: and that there are only 2 such locations (besides tiebreaker)
+  // TODO: and that tiebreaker has a different one
+  *okay = true;
 }
 
 bool MonmapMonitor::preprocess_join(MonOpRequestRef op)

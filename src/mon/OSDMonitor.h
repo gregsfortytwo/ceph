@@ -778,6 +778,30 @@ public:
     }
   }
   void convert_pool_priorities(void);
+  void try_enable_stretch_mode_pools(stringstream& ss, bool *okay,
+				     int *errcode,
+				     const vector<string>& poolnames,
+				     set<pg_pool_t*>* pools);
+  /**
+   * Check validity of inputs and OSD/CRUSH state to
+   * engage stretch mode. Designed to be used with
+   * MonmapMonitor::try_enable_stretch_mode() where we call both twice,
+   * first with commit=false to validate.
+   * @param ss: a stringstream to write errors into
+   * @param okay: Filled to true if okay, false if validation fails
+   * @param errcode: filled with -errno if there's a problem
+   * @param commit: true if we should commit the change, false if just testing
+   * @param dividing_bucket: the bucket type (eg 'dc') that divides the cluster
+   * @param bucket_count: The number of buckets required in peering.
+   *  Currently must be 2.
+   * @param pools: The pg_pool_ts which are being set to stretch mode (obtained
+   *   from try_enable_stretch_mode_pools()).
+   */
+  void try_enable_stretch_mode(stringstream& ss, bool *okay,
+			       int *errcode, bool commit,
+			       const string& dividing_bucket,
+			       uint32_t bucket_count,
+			       const set<pg_pool_t*>& pools);
 };
 
 #endif
