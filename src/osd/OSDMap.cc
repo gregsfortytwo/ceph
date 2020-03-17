@@ -664,9 +664,12 @@ void OSDMap::Incremental::encode(ceph::buffer::list& bl, uint64_t features) cons
       encode(new_device_class_flags, bl);
     }
     if (target_v >= 10) {
-      encode(turn_on_stretch_mode, bl);
+      encode(change_stretch_mode, bl);
+      encode(new_stretch_bucket_count, bl);
+      encode(new_degraded_stretch_mode, bl);
+      encode(stretch_mode_enabled, bl);
     }
-    if (turn_on_stretch_mode) {
+    if (change_stretch_mode) {
       ceph_assert(target_v >= 10);
       new_compat_v = 10;
     }
@@ -2294,8 +2297,10 @@ int OSDMap::apply_incremental(const Incremental &inc)
     }
   }
 
-  if (inc.turn_on_stretch_mode) {
-    stretch_mode_enabled = true;
+  if (inc.change_stretch_mode) {
+    stretch_mode_enabled = inc.stretch_mode_enabled;
+    stretch_bucket_count = inc.new_stretch_bucket_count;
+    degraded_stretch_mode = inc.new_degraded_stretch_mode;
   }
 
   calc_num_osds();
@@ -3029,6 +3034,8 @@ void OSDMap::encode(ceph::buffer::list& bl, uint64_t features) const
     }
     if (target_v >= 10) {
       encode(stretch_mode_enabled, bl);
+      encode(stretch_bucket_count, bl);
+      encode(degraded_stretch_mode, bl);
     }
     ENCODE_FINISH_NEW_COMPAT(bl, new_compat_v); // osd-only data
   }
@@ -3358,8 +3365,12 @@ void OSDMap::decode(ceph::buffer::list::const_iterator& bl)
     }
     if (struct_v >= 10) {
       decode(stretch_mode_enabled, bl);
+      decode(stretch_bucket_count, bl);
+      decode(degraded_stretch_mode, bl);
     } else {
       stretch_mode_enabled = false;
+      stretch_bucket_count = 0;
+      degraded_stretch_mode = 0;
     }
     DECODE_FINISH(bl); // osd-only data
   }
