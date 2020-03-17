@@ -14060,7 +14060,10 @@ void OSDMonitor::try_enable_stretch_mode(stringstream& ss, bool *okay,
       pool->peering_crush_bucket_count = bucket_count;
       pool->peering_crush_bucket_limit_enabled = true;
     }
-    pending_inc.turn_on_stretch_mode = true;
+    pending_inc.change_stretch_mode = true;
+    pending_inc.stretch_mode_enabled = true;
+    pending_inc.new_stretch_bucket_count = bucket_count;
+    pending_inc.new_degraded_stretch_mode = 0;
   }
   *okay = true;
   return;
