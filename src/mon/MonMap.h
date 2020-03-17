@@ -98,6 +98,10 @@ class MonMap {
   std::map<entity_addr_t, std::string> addr_mons;
 
   std::vector<std::string> ranks;
+  /* ranks which were removed when this map took effect.
+     There should only be one at a time, but leave support
+     for arbitrary numbers just to be safe. */
+  std::set<int> removed_ranks;
 
   /**
    * Persistent Features are all those features that once set on a
@@ -142,6 +146,15 @@ class MonMap {
                            int priority,
                            int weight,
                            bool for_mkfs);
+
+  enum election_strategy {
+			  // Keep in sync with ElectionLogic.h!
+    CLASSIC = 1, // the original rank-based one
+    DISALLOW = 2, // disallow a set from being leader
+    CONNECTIVITY = 3 // includes DISALLOW, extends to prefer stronger connections
+  };
+  election_strategy strategy = CLASSIC;
+  std::set<std::string> disallowed_leaders; // can't be leader under CONNECTIVITY/DISALLOW
 
 public:
   void calc_legacy_ranks();
@@ -226,9 +239,15 @@ public:
    * @param name Monitor name (i.e., 'foo' in 'mon.foo')
    */
   void remove(const std::string &name) {
+    // this must match what we do in ConnectionTracker::notify_rank_removed
     ceph_assert(mon_info.count(name));
+    int rank = get_rank(name);
     mon_info.erase(name);
+    disallowed_leaders.erase(name);
     ceph_assert(mon_info.count(name) == 0);
+    if (rank >= 0 ) {
+      removed_ranks.insert(rank);
+    }
     if (get_required_features().contains_all(
 	  ceph::features::mon::FEATURE_NAUTILUS)) {
       ranks.erase(std::find(ranks.begin(), ranks.end(), name));

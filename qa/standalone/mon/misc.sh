@@ -237,7 +237,7 @@ function TEST_mon_features() {
 
     # monmap must have not all k l m persistent
     # features set.
-    jqfilter='.monmap.features.persistent | length == 6'
+    jqfilter='.monmap.features.persistent | length == 7'
     jq_success "$jqinput" "$jqfilter" || return 1
     jqfilter='.monmap.features.persistent[]|select(. == "kraken")'
     jq_success "$jqinput" "$jqfilter" "kraken" || return 1

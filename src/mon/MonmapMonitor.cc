@@ -92,6 +92,8 @@ void MonmapMonitor::update_from_paxos(bool *need_bootstrap)
     mon->store->write_meta("min_mon_release",
 			   stringify(ceph_release()));
   }
+
+  mon->notify_new_monmap();
 }
 
 void MonmapMonitor::create_pending()
@@ -647,7 +649,7 @@ bool MonmapMonitor::prepare_command(MonOpRequestRef op)
      * the proposal delay being 0.0 seconds. This is key for PaxosService to
      * trigger the proposal immediately.
      * 0.0 seconds of delay.
-     *
+n     *
      * From the above, there's no point in performing further checks on the
      * pending_map, as we don't ever have multiple proposals in-flight in
      * this service. As we've established the committed state contains the
@@ -826,6 +828,99 @@ bool MonmapMonitor::prepare_command(MonOpRequestRef op)
       }
     }
     err = 0;
+  } else if (prefix == "mon set election_strategy") {
+    if (!mon->get_quorum_mon_features().contains_all(
+				        ceph::features::mon::FEATURE_PINGING)) {
+      err = -ENOTSUP;
+      ss << "Not all monitors support changing election strategies; please upgrade first!";
+      goto reply;
+    }
+    string strat;
+    MonMap::election_strategy strategy;
+    if (!cmd_getval(cmdmap, "strategy", strat)) {
+      err = -EINVAL;
+      goto reply;
+    }
+    if (strat == "classic") {
+      strategy = MonMap::CLASSIC;
+    } else if (strat == "disallow") {
+      strategy = MonMap::DISALLOW;
+    } else if (strat == "connectivity") {
+      strategy = MonMap::CONNECTIVITY;
+    } else {
+      err = -EINVAL;
+      goto reply;
+    }
+    err = 0;
+    pending_map.strategy = strategy;
+    propose = true;
+  } else if (prefix == "mon add disallowed_leader") {
+    if (!mon->get_quorum_mon_features().contains_all(
+				        ceph::features::mon::FEATURE_PINGING)) {
+      err = -ENOTSUP;
+      ss << "Not all monitors support changing election strategies; please upgrade first!";
+      goto reply;
+    }
+    string name;
+    if (!cmd_getval(cmdmap, "name", name)) {
+      err = -EINVAL;
+      goto reply;
+    }
+    if (pending_map.strategy != MonMap::DISALLOW &&
+	pending_map.strategy != MonMap::CONNECTIVITY) {
+      ss << "You cannot disallow monitors in your current election mode";
+      err = -EINVAL;
+      goto reply;
+    }
+    if (!pending_map.contains(name)) {
+      ss << "mon." << name << " does not exist";
+      err = -ENOENT;
+      goto reply;
+    }
+    if (pending_map.disallowed_leaders.count(name)) {
+      ss << "mon." << name << " is already disallowed";
+      err = 0;
+      goto reply;
+    }
+    if (pending_map.disallowed_leaders.size() == pending_map.size() - 1) {
+      ss << "mon." << name << " is the only remaining allowed leader!";
+      err = -EINVAL;
+      goto reply;
+    }
+    pending_map.disallowed_leaders.insert(name);
+    err = 0;
+    propose = true;
+  } else if (prefix == "mon rm disallowed_leader") {
+    if (!mon->get_quorum_mon_features().contains_all(
+				        ceph::features::mon::FEATURE_PINGING)) {
+      err = -ENOTSUP;
+      ss << "Not all monitors support changing election strategies; please upgrade first!";
+      goto reply;
+    }
+    string name;
+    if (!cmd_getval(cmdmap, "name", name)) {
+      err = -EINVAL;
+      goto reply;
+    }
+    if (pending_map.strategy != MonMap::DISALLOW &&
+	pending_map.strategy != MonMap::CONNECTIVITY) {
+      ss << "You cannot disallow monitors in your current election mode";
+      err = -EINVAL;
+      goto reply;
+    }
+    if (!pending_map.contains(name)) {
+      ss << "mon." << name << " does not exist";
+      err = -ENOENT;
+      goto reply;
+    }
+    if (!pending_map.disallowed_leaders.count(name)) {
+      ss << "mon." << name << " is already allowed";
+      err = 0;
+      goto reply;
+    }
+    pending_map.disallowed_leaders.erase(name);
+    err = 0;
+    propose = true;
   } else {
     ss << "unknown command " << prefix;
     err = -EINVAL;
