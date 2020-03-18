@@ -894,6 +894,9 @@ void OSDMonitor::update_from_paxos(bool *need_bootstrap)
     // will be called by on_active() on the leader, avoid doing so twice
     start_mapping();
   }
+  if (osdmap.stretch_mode_enabled) {
+    mon->maybe_engage_stretch_mode();
+  }
 }
 
 int OSDMonitor::register_cache_with_pcm()
@@ -14086,7 +14089,30 @@ void OSDMonitor::try_enable_stretch_mode(stringstream& ss, bool *okay,
     pending_inc.stretch_mode_enabled = true;
     pending_inc.new_stretch_bucket_count = bucket_count;
     pending_inc.new_degraded_stretch_mode = 0;
+    pending_inc.new_stretch_mode_bucket = dividing_id;
   }
   *okay = true;
   return;
+}
+
+bool OSDMonitor::check_for_dead_crush_zones(const map<string,set<string>>& dead_buckets,
+					    set<int> *really_down_buckets,
+					    set<string> *really_down_mons)
+{
+  if (!is_readable()) return false;
+  if (dead_buckets.empty()) return false;
+  set<int> down_cache;
+  bool really_down = false;
+  for (auto dbi : dead_buckets) {
+    const string& bucket_name = dbi.first;
+    ceph_assert(osdmap.crush->name_exists(bucket_name));
+    int bucket_id = osdmap.crush->get_item_id(bucket_name);
+    bool subtree_down = osdmap.subtree_is_down(bucket_id, &down_cache);
+    if (subtree_down) {
+      really_down = true;
+      really_down_buckets->insert(bucket_id);
+      really_down_mons->insert(dbi.second.begin(), dbi.second.end());
+    }
+  }
+  return really_down;
 }

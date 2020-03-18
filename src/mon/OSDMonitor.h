@@ -811,6 +811,14 @@ public:
 			       uint32_t bucket_count,
 			       const set<pg_pool_t*>& pools,
 			       const string& new_crush_rule);
+  /**
+   * Check the input dead_buckets mapping (buckets->dead monitors) to see
+   * if the OSDs are also down. If so, fill in really_down_buckets and
+   * really_down_mons and return true; else return false.
+   */
+  bool check_for_dead_crush_zones(const map<string,set<string>>& dead_buckets,
+				  set<int> *really_down_buckets,
+				  set<string> *really_down_mons);
 };
 
 #endif
