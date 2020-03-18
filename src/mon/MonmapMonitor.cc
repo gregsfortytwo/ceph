@@ -1019,6 +1019,7 @@ n     *
       ceph_assert(okay == true);
     }
     request_proposal(mon->osdmon());
+    propose = true;
   } else {
     ss << "unknown command " << prefix;
     err = -EINVAL;
@@ -1046,6 +1047,8 @@ void MonmapMonitor::try_enable_stretch_mode(stringstream& ss, bool *okay,
   // TODO: make sure all monitors have locations that match the given split point
   // TODO: and that there are only 2 such locations (besides tiebreaker)
   // TODO: and that tiebreaker has a different one
+  pending_map.disallowed_leaders.insert(tiebreaker_mon);
+  pending_map.stretch_mode_enabled = true;
   *okay = true;
 }
 
