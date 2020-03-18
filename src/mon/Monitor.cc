@@ -4353,6 +4353,9 @@ void Monitor::_ms_dispatch(Message *m)
   dout(20) << " entity " << s->entity_name
 	   << " caps " << s->caps.get_str() << dendl;
 
+  if (!session_stretch_allowed(s, op)) {
+    return;
+  }
   if ((is_synchronizing() ||
        (!s->authenticated && !exited_quorum.is_zero())) &&
       !src_is_mon &&
@@ -6425,16 +6428,26 @@ void Monitor::notify_new_monmap()
   }
 }
 
+struct CMonEnableStretchMode : public Context {
+  Monitor *m;
+  CMonEnableStretchMode(Monitor *mon) : m(mon) {}
+  void finish(int r) {
+    m->maybe_engage_stretch_mode();
+  }
+};
 void Monitor::maybe_engage_stretch_mode()
 {
   if (stretch_mode_engaged) return;
-  if (!osdmon()->is_readable()) return;
+  if (!osdmon()->is_readable()) {
+    osdmon()->wait_for_readable_ctx(new CMonEnableStretchMode(this));
+  }
   if (osdmon()->osdmap.stretch_mode_enabled &&
       monmap->stretch_mode_enabled) {
     stretch_mode_engaged = true;
     int32_t stretch_divider_id = osdmon()->osdmap.stretch_mode_bucket;
     stretch_bucket_divider = osdmon()->osdmap.
       crush->get_type_name(stretch_divider_id);
+    disconnect_disallowed_stretch_sessions();
     // TODO: more stuff, like booting off mis=connected OSDs
   }
 }
@@ -6517,4 +6530,45 @@ void Monitor::set_degraded_stretch_mode(const set<string>& dead_mons,
   monmon()->set_degraded_stretch_mode(dead_mons);
   degraded_stretch_mode = true;
   recovering_stretch_mode = false;
+}
+
+bool Monitor::session_stretch_allowed(MonSession *s, MonOpRequestRef& op)
+{
+  if (!is_stretch_mode()) return true;
+  if (s->proxy_con) return true;
+  if (s->validated_stretch_connection) return true;
+  if (!s->con) return true;
+  if (s->con->peer_is_osd()) {
+    // okay, check the crush location
+    int barrier_id;
+    int retval = osdmon()->osdmap.crush->get_validated_type_id(stretch_bucket_divider,
+							       &barrier_id);
+    ceph_assert(retval >= 0);
+    int osd_bucket_id = osdmon()->osdmap.crush->get_parent_of_type(s->con->peer_id,
+								   barrier_id);
+    if (osdmon()->osdmap.crush->get_item_name(osd_bucket_id) !=
+	stretch_bucket_divider) {
+      dout(5) << "discarding session " << *s
+	      << " and sending OSD to matched zone" << dendl;
+      s->con->mark_down();
+      std::lock_guard l(session_map_lock);
+      remove_session(s);
+      if (op) {
+	op->mark_zap();
+      }
+      return false;
+    }
+  }
+
+  s->validated_stretch_connection = true;
+  return true;
+}
+
+void Monitor::disconnect_disallowed_stretch_sessions()
+{
+  MonOpRequestRef blank;
+  for (auto i = session_map.sessions.begin();
+       i != session_map.sessions.end(); ++i) {
+    session_stretch_allowed(*i, blank);
+  }
 }
