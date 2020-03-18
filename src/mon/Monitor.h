@@ -252,6 +252,7 @@ private:
   bool recovering_stretch_mode{false};
   string stretch_bucket_divider;
   map<string, set<string>> dead_mon_buckets; // locations with no live mons
+  set<string> up_mon_buckets; // locations with a live mon
   void do_stretch_mode_election_work();
 
 public:
@@ -259,6 +260,7 @@ public:
   bool is_degraded_stretch_mode() { return degraded_stretch_mode; }
   bool is_recovering_stretch_mode() { return recovering_stretch_mode; }
   void maybe_engage_stretch_mode();
+  void maybe_go_degraded_stretch_mode();
   void set_degraded_stretch_mode(const set<string>& dead_mons,
 				 const set<int>& dead_buckets);
   

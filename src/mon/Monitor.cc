@@ -6413,6 +6413,12 @@ void Monitor::notify_new_monmap()
   for (auto name : monmap->disallowed_leaders) {
     dl.insert(monmap->get_rank(name));
   }
+  if (is_stretch_mode()) {
+    for (auto name : monmap->stretch_marked_down_mons) {
+      dl.insert(monmap->get_rank(name));
+    }
+    dl.insert(monmap->get_rank(monmap->tiebreaker_mon));
+  }
   elector.set_disallowed_leaders(dl);
   if (monmap->stretch_mode_enabled) {
     maybe_engage_stretch_mode();
@@ -6439,7 +6445,6 @@ void Monitor::do_stretch_mode_election_work()
   map<string, set<string>> old_dead_buckets;
   old_dead_buckets.swap(dead_mon_buckets);
   // identify if we've lost a CRUSH bucket, request OSDMonitor check for death
-  set<string> up_mon_buckets;
   map<string,set<string>> down_mon_buckets;
   for (unsigned i = 0; i < monmap->size(); ++i) {
     const auto &mi = monmap->mon_info[monmap->get_name(i)];
@@ -6458,19 +6463,58 @@ void Monitor::do_stretch_mode_election_work()
   }
 
   if (dead_mon_buckets != old_dead_buckets) {
-    set<int> matched_down_buckets;
-    set<string> matched_down_mons;
-    bool dead = osdmon()->check_for_dead_crush_zones(dead_mon_buckets,
-						     &matched_down_buckets,
-						     &matched_down_mons);
-    if (dead) {
-      set_degraded_stretch_mode(matched_down_mons, matched_down_buckets);
+    maybe_go_degraded_stretch_mode();
+  }
+}
+
+struct CMonGoDegraded : public Context {
+  Monitor *m;
+  CMonGoDegraded(Monitor *mon) : m(mon) {}
+  void finish(int r) {
+    m->maybe_go_degraded_stretch_mode();
+  }
+};
+
+void Monitor::maybe_go_degraded_stretch_mode()
+{
+  if (is_degraded_stretch_mode()) return;
+  if (dead_mon_buckets.empty()) return;
+  if (!osdmon()->is_readable()) {
+    osdmon()->wait_for_readable_ctx(new CMonGoDegraded(this));
+  }
+  set<int> matched_down_buckets;
+  set<string> matched_down_mons;
+  bool dead = osdmon()->check_for_dead_crush_zones(dead_mon_buckets,
+						   &matched_down_buckets,
+						   &matched_down_mons);
+  if (dead) {
+    if (!osdmon()->is_writeable()) {
+      osdmon()->wait_for_writeable_ctx(new CMonGoDegraded(this));
     }
+    if (!monmon()->is_writeable()) {
+      monmon()->wait_for_writeable_ctx(new CMonGoDegraded(this));
+    }
+    set_degraded_stretch_mode(matched_down_mons, matched_down_buckets);
   }
 }
 
 void Monitor::set_degraded_stretch_mode(const set<string>& dead_mons,
 					const set<int>& dead_buckets)
 {
-  // hmm need to get these into MonMap and OSDMap even if not immediately writeable?
+  ceph_assert(osdmon()->is_writeable());
+  ceph_assert(monmon()->is_writeable());
+
+  // figure out which OSD zone(s) remains alive by removing
+  // tiebreaker mon from up_mon_buckets
+  set<string> live_zones = up_mon_buckets;
+  ceph_assert(monmap->contains(monmap->tiebreaker_mon));
+  const auto &mi = monmap->mon_info[monmap->tiebreaker_mon];
+  auto ci = mi.crush_loc.find(stretch_bucket_divider);
+  live_zones.erase(ci->second);
+  ceph_assert(live_zones.size() == 1); // only support 2 zones right now
+  
+  osdmon()->set_degraded_stretch_mode(dead_buckets, live_zones);
+  monmon()->set_degraded_stretch_mode(dead_mons);
+  degraded_stretch_mode = true;
+  recovering_stretch_mode = false;
 }
