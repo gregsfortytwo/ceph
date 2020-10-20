@@ -758,6 +758,12 @@ if(WITH_FUSE)
   install(PROGRAMS mount.fuse.ceph DESTINATION ${CMAKE_INSTALL_SBINDIR})
 endif(WITH_FUSE)
 
+set(ceph_journaler_bench_srcs
+  ceph_journaler_bench.cc)
+add_executable(ceph-journaler-bench ${ceph_journaler_bench_srcs})
+target_link_libraries(ceph-journaler-bench ceph-common global-static)
+install(TARGETS ceph-journaler-bench DESTINATION bin)
+
 add_subdirectory(journal)
 
 if(WITH_RBD)
