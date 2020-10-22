@@ -759,9 +759,10 @@ if(WITH_FUSE)
 endif(WITH_FUSE)
 
 set(ceph_journaler_bench_srcs
-  ceph_journaler_bench.cc)
+  ceph_journaler_bench.cc
+  osdc/Journaler.cc)
 add_executable(ceph-journaler-bench ${ceph_journaler_bench_srcs})
-target_link_libraries(ceph-journaler-bench ceph-common global-static)
+target_link_libraries(ceph-journaler-bench ceph-common global-static osdc)
 install(TARGETS ceph-journaler-bench DESTINATION bin)
 
 add_subdirectory(journal)
