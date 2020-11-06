@@ -96,6 +96,7 @@ public:
 
   /// Returns rval once the Context is called
   int wait() {
+    // TODO: buggy if completed before wait() is called!
     std::unique_lock l{lock};
     cond.wait(l, [this] { return done;});
     return rval;

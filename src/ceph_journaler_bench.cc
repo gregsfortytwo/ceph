@@ -90,7 +90,7 @@ public:
   }
 };
 
-int main(int argc, const char **argv, char *envp[]) 
+int main(int argc, const char **argv, char *envp[])
 {
   //cerr << "ceph-journaler-bench starting" << std::endl;
   vector<const char*> args;
@@ -103,11 +103,11 @@ int main(int argc, const char **argv, char *envp[])
   // parse_bench_options(args);
   string name = "ceph_journaler_bench_journal";
   inodeno_t ino(0);
-  int64_t pool(0);
+  int64_t pool(1);
   const char *magic = "ceph_journaler_bench_magic";
   int latency_key = 5001;
   int thread_count = 2;
-  int buffer_size = 16384;
+  int buffer_size = 163840;
   int time = 30;
   
   pick_addresses(g_ceph_context, CEPH_PICK_ADDRESS_PUBLIC);
@@ -133,10 +133,11 @@ int main(int argc, const char **argv, char *envp[])
   
   cout << "ceph-journaler-bench: starting" << std::endl;
 
+  messenger->add_dispatcher_tail(&objecter);
   mc.set_messenger(messenger);
+  mc.set_want_keys(CEPH_ENTITY_TYPE_OSD);
   mc.init();
   objecter.init();
-  messenger->add_dispatcher_tail(&objecter);
   objecter.start();
 
   Journaler journaler(name, ino, pool, magic, &objecter, logger, latency_key, &finisher);
@@ -154,6 +155,23 @@ int main(int argc, const char **argv, char *envp[])
   
   journaler.set_writeable();
   journaler.create(&log_layout, g_conf()->mds_journal_format);
+
+  ceph::mutex timer_mutex("timer_mutex");
+  std::unique_lock<ceph::mutex> timer_lock(timer_mutex);
+  ceph::condition_variable cond;
+  C_SaferCond safer_cond;
+  bool header_done = false;
+  int rval = -242;
+  journaler.write_head(new C_SafeCond(timer_mutex, cond, &header_done, &rval));
+
+  cout << "waiting for journal header write" << std::endl;
+  while (!header_done) {
+    cond.wait(timer_lock);
+  }
+  if (rval != 0) {
+    cerr << "Error writing journal header: " << rval << std::endl;
+    return rval;
+  }
   
   for (auto i : loaders) {
     i->start_thread();
@@ -161,19 +179,36 @@ int main(int argc, const char **argv, char *envp[])
 
   cout << "ceph-journaler-bench: started " << loaders.size() << " loaders; waiting for " << time << std::endl;
 
-  ceph::mutex timer_mutex("timer_mutex");
-  std::unique_lock<ceph::mutex> timer_lock(timer_mutex);
-  ceph::condition_variable cond;
-  cond.wait_for(timer_lock, std::chrono::seconds(time));
+  utime_t start = ceph_clock_now();
+  utime_t finish(start);
+  finish += time;
+  do {
+    cond.wait_for(timer_lock, std::chrono::seconds(1));
+    journaler.flush();
+  } while (ceph_clock_now() < finish);
 
   cout << "timer expired" << std::endl;
+
   for (auto i : loaders) {
     i->stop_thread();
   }
 
+  utime_t flush_start = ceph_clock_now();
+  bool flush_done = false;
+  rval = -242;
+  journaler.flush(new C_SafeCond(timer_mutex, cond, &flush_done, &rval));
+  
   for (auto i : loaders) {
     i->join_thread();
   }
+
+  while (!flush_done) {
+    cond.wait(timer_lock);
+  }
+  utime_t flush_end = ceph_clock_now();
+
+  cout << "flush and thread joins took " << (double(flush_end) - flush_start)
+       << " secs" << " with r " << rval << std::endl;
 
   int total_appends = 0;
   int loader_i = 0;
@@ -185,6 +220,8 @@ int main(int argc, const char **argv, char *envp[])
   }
   cout << "total appends: " << total_appends << std::endl;
   cout << "average appends/thread: " << (double(total_appends) / thread_count) << std::endl;
+  cout << "total appends/s: " << (double(total_appends) / time) << std::endl;
+  cout << "average appends/thread/s: " << ((double(total_appends) / thread_count) / time) << std::endl;
   
   for (auto i : loaders) {
     delete i;
