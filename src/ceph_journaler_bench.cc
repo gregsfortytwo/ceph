@@ -122,7 +122,7 @@ int main(int argc, const char **argv, char *envp[])
   messenger->set_default_policy(Messenger::Policy::lossy_client(0));
   messenger->start();
 
-  Objecter objecter(g_ceph_context, messenger, &mc, poolctx, 0, 0);
+  Objecter objecter(g_ceph_context, messenger, &mc, poolctx);
 
   PerfCountersBuilder plb(g_ceph_context, "journaler_bench", 5000, 5002);
   plb.add_time_avg(latency_key, "jlat", "Journaler flush latency");
