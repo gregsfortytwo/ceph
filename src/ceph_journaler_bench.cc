@@ -133,7 +133,7 @@ int main(int argc, const char **argv, char *envp[])
   
   cout << "ceph-journaler-bench: starting" << std::endl;
 
-  //messenger->add_dispatcher_tail(&objecter);
+  messenger->add_dispatcher_tail(&objecter);
   monc.set_messenger(messenger);
   monc.set_want_keys(CEPH_ENTITY_TYPE_OSD);
   monc.init();
@@ -150,6 +150,23 @@ int main(int argc, const char **argv, char *envp[])
     messenger->shutdown();
     messenger->wait();
   }
+
+  client_t whoami = monc.get_global_id();
+  messenger->set_myname(entity_name_t::CLIENT(whoami.v));
+
+  {
+    //test this stupid objecter setup
+    cout << "attempting objecter write" << std::endl;
+    object_t oid = file_object_t(ino, 0);
+    object_locator_t oloc(pool);
+    SnapContext snapc;
+    bufferlist bl;
+    C_SaferCond write_cond;
+    objecter.write_full(oid, oloc, snapc, bl, ceph::real_clock::now(), 0, &write_cond);
+    write_cond.wait();
+    cout << "finished objecter write" << std::endl;
+  }
+
   Journaler journaler(name, ino, pool, magic, &objecter, logger, latency_key, &finisher);
 
   list<JournalLoader*> loaders;
@@ -164,12 +181,11 @@ int main(int argc, const char **argv, char *envp[])
   log_layout.pool_id = pool;
   
   journaler.set_writeable();
-  journaler.create(&log_layout, g_conf()->mds_journal_format);
+  journaler .create(&log_layout, g_conf()->mds_journal_format);
 
   ceph::mutex timer_mutex("timer_mutex");
   std::unique_lock<ceph::mutex> timer_lock(timer_mutex);
   ceph::condition_variable cond;
-  C_SaferCond safer_cond;
   bool header_done = false;
   int rval = -242;
   journaler.write_head(new C_SafeCond(timer_mutex, cond, &header_done, &rval));
