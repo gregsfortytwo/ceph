@@ -106,8 +106,8 @@ int main(int argc, const char **argv, char *envp[])
   int64_t pool(2);
   const char *magic = "ceph_journaler_bench_magic";
   int latency_key = 5001;
-  int thread_count = 2;
-  int buffer_size = 163840;
+  int thread_count = 1;
+  int buffer_size = 16384;
   int time = 30;
   
   pick_addresses(g_ceph_context, CEPH_PICK_ADDRESS_PUBLIC);
@@ -153,19 +153,6 @@ int main(int argc, const char **argv, char *envp[])
 
   client_t whoami = monc.get_global_id();
   messenger->set_myname(entity_name_t::CLIENT(whoami.v));
-
-  {
-    //test this stupid objecter setup
-    cout << "attempting objecter write" << std::endl;
-    object_t oid = file_object_t(ino, 0);
-    object_locator_t oloc(pool);
-    SnapContext snapc;
-    bufferlist bl;
-    C_SaferCond write_cond;
-    objecter.write_full(oid, oloc, snapc, bl, ceph::real_clock::now(), 0, &write_cond);
-    write_cond.wait();
-    cout << "finished objecter write" << std::endl;
-  }
 
   Journaler journaler(name, ino, pool, magic, &objecter, logger, latency_key, &finisher);
 
