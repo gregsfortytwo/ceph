@@ -102,8 +102,8 @@ int main(int argc, const char **argv, char *envp[])
 
   // parse_bench_options(args);
   string name = "ceph_journaler_bench_journal";
-  inodeno_t ino(0);
-  int64_t pool(1);
+  inodeno_t ino(100);
+  int64_t pool(2);
   const char *magic = "ceph_journaler_bench_magic";
   int latency_key = 5001;
   int thread_count = 2;
@@ -114,15 +114,15 @@ int main(int argc, const char **argv, char *envp[])
 
   // get monmap
   ceph::async::io_context_pool  poolctx(1);
-  MonClient mc(g_ceph_context, poolctx);
-  if (mc.build_initial_monmap() < 0)
+  MonClient monc(g_ceph_context, poolctx);
+  if (monc.build_initial_monmap() < 0)
     return -1;
 
   Messenger *messenger = Messenger::create_client_messenger(g_ceph_context, "journaler_bench");
   messenger->set_default_policy(Messenger::Policy::lossy_client(0));
   messenger->start();
 
-  Objecter objecter(g_ceph_context, messenger, &mc, poolctx);
+  Objecter objecter(g_ceph_context, messenger, &monc, poolctx);
 
   PerfCountersBuilder plb(g_ceph_context, "journaler_bench", 5000, 5002);
   plb.add_time_avg(latency_key, "jlat", "Journaler flush latency");
@@ -133,13 +133,23 @@ int main(int argc, const char **argv, char *envp[])
   
   cout << "ceph-journaler-bench: starting" << std::endl;
 
-  messenger->add_dispatcher_tail(&objecter);
-  mc.set_messenger(messenger);
-  mc.set_want_keys(CEPH_ENTITY_TYPE_OSD);
-  mc.init();
+  //messenger->add_dispatcher_tail(&objecter);
+  monc.set_messenger(messenger);
+  monc.set_want_keys(CEPH_ENTITY_TYPE_OSD);
+  monc.init();
   objecter.init();
   objecter.start();
+  finisher.start();
+  objecter.wait_for_osd_map();
+  int r = monc.authenticate();
 
+  if (r < 0) {
+    cerr << "authentication failed, quitting" << std::endl;
+    objecter.shutdown();
+    monc.shutdown();
+    messenger->shutdown();
+    messenger->wait();
+  }
   Journaler journaler(name, ino, pool, magic, &objecter, logger, latency_key, &finisher);
 
   list<JournalLoader*> loaders;
@@ -227,7 +237,7 @@ int main(int argc, const char **argv, char *envp[])
     delete i;
   }
   objecter.shutdown();
-  mc.shutdown();
+  monc.shutdown();
   messenger->shutdown();
   messenger->wait();
   delete messenger;
