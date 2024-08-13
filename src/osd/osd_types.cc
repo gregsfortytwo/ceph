@@ -1953,7 +1953,7 @@ void pg_pool_t::encode(ceph::buffer::list& bl, uint64_t features) const
     return;
   }
 
-  uint8_t v = 30;
+  uint8_t v = 31;
   // NOTE: any new encoding dependencies must be reflected by
   // SIGNIFICANT_FEATURES
   if (!(features & CEPH_FEATURE_NEW_OSDOP_ENCODING)) {
@@ -1966,8 +1966,11 @@ void pg_pool_t::encode(ceph::buffer::list& bl, uint64_t features) const
     v = 26;
   } else if (!HAVE_FEATURE(features, SERVER_NAUTILUS)) {
     v = 27;
-  } else if (!is_stretch_pool()) {
-    v = 29;
+  } else if (!HAVE_FEATURE(features, SERVER_SQUID)) {
+    v = 30;
+    if (!is_stretch_pool()) {
+      v = 29;
+    } 
   }
 
   ENCODE_START(v, 5, bl);
@@ -2064,12 +2067,16 @@ void pg_pool_t::encode(ceph::buffer::list& bl, uint64_t features) const
     encode(peering_crush_bucket_barrier, bl);
     encode(peering_crush_mandatory_member, bl);
   }
+  if (v >= 31) {
+    uint32_t new_thing = 0;
+    encode(new_thing, bl);
+  }
   ENCODE_FINISH(bl);
 }
 
 void pg_pool_t::decode(ceph::buffer::list::const_iterator& bl)
 {
-  DECODE_START_LEGACY_COMPAT_LEN(30, 5, 5, bl);
+  DECODE_START_LEGACY_COMPAT_LEN(31, 5, 5, bl);
   decode(type, bl);
   decode(size, bl);
   decode(crush_rule, bl);
@@ -2249,6 +2256,10 @@ void pg_pool_t::decode(ceph::buffer::list::const_iterator& bl)
     decode(peering_crush_bucket_target, bl);
     decode(peering_crush_bucket_barrier, bl);
     decode(peering_crush_mandatory_member, bl);
+  }
+  if (struct_v >= 31) {
+    uint32_t new_thing;
+    decode(new_thing, bl);
   }
   DECODE_FINISH(bl);
   calc_pg_masks();
