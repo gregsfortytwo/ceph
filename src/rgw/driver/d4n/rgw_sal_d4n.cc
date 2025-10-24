@@ -1,5 +1,5 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
-// vim: ts=8 sw=2 smarttab ft=cpp
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:nil -*-
+// vim: ts=8 sw=2 sts=2 expandtab ft=cpp
 
 /*
  * Ceph - scalable distributed file system
@@ -46,7 +46,7 @@ D4NFilterDriver::D4NFilterDriver(Driver* _next, boost::asio::io_context& io_cont
   partition_info.location = g_conf()->rgw_d4n_l1_datacache_persistent_path;
   partition_info.name = "d4n";
   partition_info.type = "read-cache";
-  partition_info.size = g_conf()->rgw_d4n_l1_datacache_size;
+  partition_info.reserve_size = g_conf()->rgw_d4n_l1_datacache_disk_reserve;
   cacheDriver = std::make_unique<rgw::cache::SSDDriver>(partition_info, admin);
 }
 
@@ -1482,8 +1482,7 @@ bool D4NFilterObject::check_head_exists_in_cache_get_oid(const DoutPrefixProvide
   return found_in_cache;
 }
 
-int D4NFilterObject::get_obj_attrs(optional_yield y, const DoutPrefixProvider* dpp,
-                                rgw_obj* target_obj)
+int D4NFilterObject::get_obj_attrs(optional_yield y, const DoutPrefixProvider* dpp)
 {
   bool is_latest_version = true;
   if (this->have_instance()) {
@@ -1502,17 +1501,14 @@ int D4NFilterObject::get_obj_attrs(optional_yield y, const DoutPrefixProvider* d
     rgw::sal::Attrs attrs;
     std::string version;
     ldpp_dout(dpp, 10) << "D4NFilterObject::" << __func__ << "(): Fetching attrs from backend store." << dendl;
-    auto ret = next->get_obj_attrs(y, dpp, target_obj);
-    if (ret < 0 || !target_obj) {
-      if (!target_obj) {
-        ret = -ENOENT;
-      }
+    auto ret = next->get_obj_attrs(y, dpp);
+    if (ret < 0) {
       ldpp_dout(dpp, 0) << "D4NFilterObject::" << __func__ << "(): Failed to fetching attrs from backend store with ret: " << ret << dendl;
       return ret;
     }
   
     this->load_obj_state(dpp, y);
-    this->obj = *target_obj;
+    this->obj = next->get_obj();
     if (!this->obj.key.instance.empty()) {
       this->set_instance(this->obj.key.instance);
     }
@@ -2099,8 +2095,7 @@ int D4NFilterObject::D4NFilterReadOp::get_attr(const DoutPrefixProvider* dpp, co
 {
   rgw::sal::Attrs& attrs = source->get_attrs();
   if (attrs.empty()) {
-    rgw_obj obj = source->get_obj();
-    auto ret = source->get_obj_attrs(y, dpp, &obj);
+    auto ret = source->get_obj_attrs(y, dpp);
     if (ret < 0) {
       ldpp_dout(dpp, 0) << "D4NFilterObject::" << __func__ << "(): Error: failed to fetch attrs, ret=" << ret << dendl;
       return ret;

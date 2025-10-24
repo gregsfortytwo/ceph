@@ -1,5 +1,6 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
-// vim: ts=8 sw=2 smarttab
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:nil -*- 
+// vim: ts=8 sw=2 sts=2 expandtab
+
 /*
  * Ceph - scalable distributed file system
  *
@@ -500,7 +501,8 @@ private:
            xattr_name == "ceph.dir.charmap"sv ||
            xattr_name == "ceph.dir.normalization"sv ||
            xattr_name == "ceph.dir.encoding"sv ||
-           xattr_name == "ceph.dir.casesensitive"sv;
+           xattr_name == "ceph.dir.casesensitive"sv ||
+           xattr_name == "ceph.dir.subvolume.snaps.visible"sv;
   }
 
   static bool is_ceph_dir_vxattr(std::string_view xattr_name) {
@@ -520,7 +522,8 @@ private:
 	   xattr_name == "ceph.dir.normalization"sv ||
 	   xattr_name == "ceph.dir.encoding"sv ||
 	   xattr_name == "ceph.dir.casesensitive"sv ||
-	   xattr_name == "ceph.dir.subvolume"sv;
+	   xattr_name == "ceph.dir.subvolume"sv ||
+     xattr_name == "ceph.dir.subvolume.snaps.visible"sv;
   }
 
   static bool is_ceph_file_vxattr(std::string_view xattr_name) {

@@ -1,5 +1,5 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
-// vim: ts=8 sw=2 smarttab ft=cpp
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:nil -*-
+// vim: ts=8 sw=2 sts=2 expandtab ft=cpp
 
 /*
  * Ceph - scalable distributed file system
@@ -555,6 +555,10 @@ int RadosBucket::remove_bypass_gc(int concurrent_max, bool
         rgw_raw_obj raw_head_obj;
         store->get_raw_obj(manifest.get_head_placement_rule(), head_obj, &raw_head_obj);
 
+        // tag for cls_refcount
+        const std::string tag = (astate->tail_tag.length() > 0
+                               ? astate->tail_tag.to_str()
+                               : astate->obj_tag.to_str());
         for (; miter != manifest.obj_end(dpp) && max_aio--; ++miter) {
           if (!max_aio) {
             ret = drain_aio(handles);
@@ -571,7 +575,7 @@ int RadosBucket::remove_bypass_gc(int concurrent_max, bool
             continue;
           }
 
-          ret = store->getRados()->delete_raw_obj_aio(dpp, last_obj, handles);
+          ret = store->getRados()->delete_tail_obj_aio(dpp, last_obj, tag, handles);
           if (ret < 0) {
             ldpp_dout(dpp, -1) << "ERROR: delete obj aio failed with " << ret << dendl;
             return ret;
@@ -2843,19 +2847,30 @@ int RadosObject::set_obj_attrs(const DoutPrefixProvider* dpp, Attrs* setattrs, A
 			y, log_op, mtime);
 }
 
-int RadosObject::get_obj_attrs(optional_yield y, const DoutPrefixProvider* dpp, rgw_obj* target_obj)
+int RadosObject::get_obj_attrs(optional_yield y, const DoutPrefixProvider* dpp)
 {
   RGWRados::Object op_target(store->getRados(), bucket->get_info(), *rados_ctx, get_obj());
   RGWRados::Object::Read read_op(&op_target);
+  rgw_obj target = get_obj();
 
-  return read_attrs(dpp, read_op, y, target_obj);
+  int r = read_attrs(dpp, read_op, y, &target);
+  if (r < 0) {
+    return r;
+  }
+
+  set_instance(target.key.instance);
+
+  return 0;
 }
 
 int RadosObject::modify_obj_attrs(const char* attr_name, bufferlist& attr_val, optional_yield y, const DoutPrefixProvider* dpp, uint32_t flags)
 {
   rgw_obj target = get_obj();
   rgw_obj save = get_obj();
-  int r = get_obj_attrs(y, dpp, &target);
+  RGWRados::Object op_target(store->getRados(), bucket->get_info(), *rados_ctx, get_obj());
+  RGWRados::Object::Read read_op(&op_target);
+
+  int r = read_attrs(dpp, read_op, y, &target);
   if (r < 0) {
     return r;
   }

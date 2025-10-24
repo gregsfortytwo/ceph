@@ -105,6 +105,36 @@ else:
             )
             return gw_log_level
 
+        @ReadPermission
+        @Endpoint('GET', '/stats')
+        @NvmeofCLICommand(
+            "nvmeof gateway get_stats", model.GatewayStatsInfo, alias="nvmeof gw get_stats")
+        @EndpointDoc("Get NVMeoF statistics for the gateway")
+        @convert_to_model(model.GatewayStatsInfo)
+        @handle_nvmeof_error
+        def get_gw_stats(self, gw_group: Optional[str] = None, traddr: Optional[str] = None):
+            gw_stats = NVMeoFClient(gw_group=gw_group,
+                                    traddr=traddr).stub.get_gateway_stats(
+                NVMeoFClient.pb2.get_gateway_stats_req()
+            )
+            return gw_stats
+
+        @ReadPermission
+        @Endpoint('GET', '/listener_info')
+        @NvmeofCLICommand(
+            "nvmeof gateway listener_info", model.GatewayListenersInfo,
+            alias="nvmeof gw listener_info")
+        @EndpointDoc("Get NVMeoF gateway's listeners info")
+        @convert_to_model(model.GatewayListenersInfo)
+        @handle_nvmeof_error
+        def listener_info(self, nqn: str, gw_group: Optional[str] = None,
+                          traddr: Optional[str] = None):
+            gw_listener_info = NVMeoFClient(gw_group=gw_group,
+                                            traddr=traddr).stub.show_gateway_listeners_info(
+                NVMeoFClient.pb2.show_gateway_listeners_info_req(subsystem_nqn=nqn)
+            )
+            return gw_listener_info
+
     @APIRouter("/nvmeof/spdk", Scope.NVME_OF)
     @APIDoc("NVMe-oF SPDK Management API", "NVMe-oF SPDK")
     class NVMeoFSpdk(RESTController):
@@ -197,7 +227,7 @@ else:
             parameters={
                 "nqn": Param(str, "NVMeoF subsystem NQN"),
                 "enable_ha": Param(bool, "Enable high availability", True, None),
-                "max_namespaces": Param(int, "Maximum number of namespaces", True, 4096),
+                "max_namespaces": Param(int, "Maximum number of namespaces", True, None),
                 "no_group_append": Param(int, "Do not append gateway group name to the NQN",
                                          True, False),
                 "serial_number": Param(int, "Subsystem serial number", True, None),
@@ -209,7 +239,7 @@ else:
         @convert_to_model(model.SubsystemStatus)
         @handle_nvmeof_error
         def create(self, nqn: str, enable_ha: Optional[bool] = True,
-                   max_namespaces: Optional[int] = 4096, no_group_append: Optional[bool] = False,
+                   max_namespaces: Optional[int] = None, no_group_append: Optional[bool] = False,
                    serial_number: Optional[str] = None, dhchap_key: Optional[str] = None,
                    gw_group: Optional[str] = None, traddr: Optional[str] = None):
             return NVMeoFClient(gw_group=gw_group, traddr=traddr).stub.create_subsystem(
@@ -379,14 +409,14 @@ else:
         @EndpointDoc(
             "List all NVMeoF namespaces in a subsystem",
             parameters={
-                "nqn": Param(str, "NVMeoF subsystem NQN"),
+                "nqn": Param(str, "NVMeoF subsystem NQN", True, None),
                 "nsid": Param(str, "NVMeoF Namespace ID to filter by", True, None),
                 "gw_group": Param(str, "NVMeoF gateway group", True, None),
             },
         )
         @convert_to_model(model.NamespaceList)
         @handle_nvmeof_error
-        def list(self, nqn: str, nsid: Optional[str] = None,
+        def list(self, nqn: Optional[str] = None, nsid: Optional[str] = None,
                  gw_group: Optional[str] = None, traddr: Optional[str] = None):
             return NVMeoFClient(gw_group=gw_group, traddr=traddr).stub.list_namespaces(
                 NVMeoFClient.pb2.list_namespaces_req(subsystem=nqn,

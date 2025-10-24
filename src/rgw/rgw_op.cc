@@ -1,5 +1,5 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
-// vim: ts=8 sw=2 smarttab ft=cpp
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:nil -*-
+// vim: ts=8 sw=2 sts=2 expandtab ft=cpp
 
 #include <errno.h>
 #include <optional>
@@ -5753,6 +5753,9 @@ bool RGWCopyObj::parse_copy_location(const std::string_view& url_src,
     params_str = url_src.substr(pos + 1);
   }
 
+  if (name_str.empty()) {
+    return false;
+  }
   if (name_str[0] == '/') // trim leading slash
     name_str.remove_prefix(1);
 

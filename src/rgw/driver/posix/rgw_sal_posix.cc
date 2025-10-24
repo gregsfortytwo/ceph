@@ -1,5 +1,5 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
-// vim: ts=8 sw=2 smarttab ft=cpp
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:nil -*-
+// vim: ts=8 sw=2 sts=2 expandtab ft=cpp
 
 /*
  * Ceph - scalable distributed file system
@@ -3129,8 +3129,7 @@ int POSIXObject::set_obj_attrs(const DoutPrefixProvider* dpp, Attrs* setattrs,
   return 0;
 }
 
-int POSIXObject::get_obj_attrs(optional_yield y, const DoutPrefixProvider* dpp,
-                                rgw_obj* target_obj)
+int POSIXObject::get_obj_attrs(optional_yield y, const DoutPrefixProvider* dpp)
 {
   //int fd;
 

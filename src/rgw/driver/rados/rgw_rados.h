@@ -1,5 +1,5 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
-// vim: ts=8 sw=2 smarttab ft=cpp
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:nil -*-
+// vim: ts=8 sw=2 sts=2 expandtab ft=cpp
 
 #pragma once
 
@@ -1686,7 +1686,8 @@ public:
 
   librados::Rados* get_rados_handle();
 
-  int delete_raw_obj_aio(const DoutPrefixProvider *dpp, const rgw_raw_obj& obj, std::list<librados::AioCompletion *>& handles);
+  int delete_tail_obj_aio(const DoutPrefixProvider *dpp, const rgw_raw_obj& obj,
+                          const std::string& tag, std::list<librados::AioCompletion *>& handles);
   int delete_obj_aio(const DoutPrefixProvider *dpp, const rgw_obj& obj, RGWBucketInfo& info, RGWObjState *astate,
                      std::list<librados::AioCompletion *>& handles, bool keep_index_consistent,
                      optional_yield y);

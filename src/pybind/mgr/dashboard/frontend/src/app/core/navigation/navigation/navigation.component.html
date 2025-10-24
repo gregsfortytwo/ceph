@@ -179,10 +179,14 @@
                             *ngIf="permissions.rbdMirroring.read && enabledFeature.mirroring"
                             class="tc_submenuitem tc_submenuitem_block_mirroring">
             <span i18n>Mirroring
-              <small *ngIf="summaryData?.rbd_mirroring?.warnings !== 0"
-                     class="badge badge-warning">{{ summaryData?.rbd_mirroring?.warnings }}</small>
-              <small *ngIf="summaryData?.rbd_mirroring?.errors !== 0"
-                     class="badge badge-danger">{{ summaryData?.rbd_mirroring?.errors }}</small>
+              <cds-tag *ngIf="summaryData?.rbd_mirroring?.warnings !== 0"
+                       class="tag-warning">
+                {{ summaryData?.rbd_mirroring?.warnings }}
+              </cds-tag>
+              <cds-tag *ngIf="summaryData?.rbd_mirroring?.errors !== 0"
+                       class="tag-danger">
+                {{ summaryData?.rbd_mirroring?.errors }}
+              </cds-tag>
             </span>
           </cds-sidenav-item>
           <cds-sidenav-item route="/block/iscsi"
@@ -211,25 +215,25 @@
                             [useRouter]="true"
                             class="tc_submenuitem tc_submenuitem_rgw_overview"><span i18n>Overview</span></cds-sidenav-item>
           <cds-sidenav-item route="/rgw/user"
-                            title="Users"
+                            title="User management"
                             i18n-title
                             [useRouter]="true"
-                            class="tc_submenuitem tc_submenuitem_rgw_users"><span i18n>Users</span></cds-sidenav-item>
+                            class="tc_submenuitem tc_submenuitem_rgw_users"><span i18n>User management</span></cds-sidenav-item>
           <cds-sidenav-item route="/rgw/bucket"
                             title="Buckets"
                             i18n-title
                             [useRouter]="true"
                             class="tc_submenuitem tc_submenuitem_rgw_buckets"><span i18n>Buckets</span></cds-sidenav-item>
-          <cds-sidenav-item route="/rgw/topic"
+          <cds-sidenav-item route="/rgw/destination"
                             [useRouter]="true"
-                            title="Topics"
+                            title="Notification destination"
                             i18n-title
-                            class="tc_submenuitem tc_submenuitem_rgw_topics"><span i18n>Topics</span></cds-sidenav-item>
-          <cds-sidenav-item route="/rgw/tiering"
-                            title="Tiering"
+                            class="tc_submenuitem tc_submenuitem_rgw_notification"><span i18n>Notification destination</span></cds-sidenav-item>
+          <cds-sidenav-item route="/rgw/storage-class"
+                            title="Storage class"
                             i18n-title
                             [useRouter]="true"
-                            class="tc_submenuitem tc_submenuitem_rgw_tiering"><span i18n>Tiering</span></cds-sidenav-item>
+                            class="tc_submenuitem tc_submenuitem_rgw_storage_class"><span i18n>Storage class</span></cds-sidenav-item>
           <cds-sidenav-item route="/rgw/multisite"
                             title="Multi-site"
                             i18n-title
@@ -255,7 +259,7 @@
         <!-- Filesystem -->
         <cds-sidenav-menu title="File"
                           i18n-title
-                          *ngIf="permissions.nfs.read && enabledFeature.nfs || permissions.cephfs.read && enabledFeature.cephfs || permissions.smb.read"
+                          *ngIf="permissions.nfs.read && enabledFeature.nfs || permissions.cephfs.read && enabledFeature.cephfs || permissions?.smb?.read"
                           class="tc_menuitem_file">
           <svg cdsIcon="file-storage"
                icon
@@ -276,7 +280,7 @@
                             [useRouter]="true"
                             title="SMB"
                             i18n-title
-                            *ngIf="permissions.smb.read"
+                            *ngIf="permissions?.smb?.read"
                             class="tc_submenuitem tc_submenuitem_file_smb"><span i18n>SMB</span></cds-sidenav-item>
         </cds-sidenav-menu>
         <!-- Observability -->
@@ -301,10 +305,10 @@
                             class="tc_submenuitem tc_submenuitem_observe_monitoring">
             <span i18n>
               <ng-container>Alerts</ng-container>
-              <small *ngIf="prometheusAlertService.activeCriticalAlerts > 0"
-                     class="badge badge-danger ms-1">{{ prometheusAlertService.activeCriticalAlerts }}</small>
-              <small *ngIf="prometheusAlertService.activeWarningAlerts > 0"
-                     class="badge badge-warning ms-1">{{ prometheusAlertService.activeWarningAlerts }}</small>
+              <cds-tag *ngIf="prometheusAlertService.activeCriticalAlerts > 0"
+                     class="tag-danger ms-1">{{ prometheusAlertService.activeCriticalAlerts }}</cds-tag>
+              <cds-tag *ngIf="prometheusAlertService.activeWarningAlerts > 0"
+                     class="tag-warning ms-1">{{ prometheusAlertService.activeWarningAlerts }}</cds-tag>
             </span>
           </cds-sidenav-item>
         </cds-sidenav-menu>
