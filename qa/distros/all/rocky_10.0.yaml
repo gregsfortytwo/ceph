@@ -1,2 +1,6 @@
 os_type: rocky
 os_version: "10.0"
+
+overrides:
+  ansible.cephlab:
+    branch: wip-greg-rocky10
